@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V7-Shield: open-source PHP malware scanner for WordPress, Joomla and custom PHP</title>
+<meta name="description" content="V7-Shield is a free, open-source, read-only malware scanner for PHP websites. Find webshells, obfuscated code, PHP hidden in images and suspicious uploads on WordPress, Joomla and custom PHP sites. Self-hosted, no dependencies.">
+<meta name="keywords" content="php malware scanner, wordpress malware scanner, joomla malware scanner, webshell detection, php webshell scanner, open source malware scanner, self-hosted security scanner, php security">
+<link rel="canonical" href="https://thevaibhaw.github.io/V7-Shield/">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="V7-Shield: open-source PHP malware scanner">
+<meta property="og:description" content="Read-only, self-hosted scanner that finds webshells, obfuscated code and PHP hidden in uploads on WordPress, Joomla and custom PHP sites.">
+<meta property="og:url" content="https://thevaibhaw.github.io/V7-Shield/">
+<meta property="og:image" content="https://thevaibhaw.github.io/V7-Shield/screenshots/dashboard.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "V7-Shield",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Linux, macOS, Windows (PHP 8.1+)",
+  "description": "Open-source, read-only malware scanner for PHP websites: WordPress, Joomla and custom PHP.",
+  "url": "https://thevaibhaw.github.io/V7-Shield/",
+  "downloadUrl": "https://github.com/TheVaibhaw/V7-Shield/releases",
+  "softwareVersion": "0.2.0",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Vaibhaw Kumar", "url": "https://github.com/TheVaibhaw" }
+}
+</script>
+
+<style>
+  :root { --bg: #070d1a; --surface: #0f1a2e; --border: #1f3150; --text: #e6eefb; --muted: #94a3c4; --cyan: #38e1ff; --blue: #4c8dff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--cyan); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 22px 0; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.15rem; }
+  .brand span { color: var(--cyan); }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 18px; font-size: .95rem; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 48px 0 32px; text-align: center; }
+  .hero h1 { font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.02em; }
+  .hero p { color: var(--muted); font-size: 1.12rem; max-width: 680px; margin: 0 auto 26px; }
+  .btn { display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; text-decoration: none; margin: 4px; }
+  .btn-main { background: linear-gradient(135deg, var(--cyan), var(--blue)); color: #03111a; }
+  .btn-alt { border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+  .shot { margin: 36px auto 0; max-width: 980px; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 30px 80px -40px rgba(56,225,255,.35); }
+  .shot img { display: block; width: 100%; height: auto; }
+  section { padding: 44px 0; }
+  h2 { font-size: 1.6rem; margin: 0 0 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  pre { background: #050a14; border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; overflow-x: auto; font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .note { border-left: 3px solid #ffb547; padding: 10px 16px; background: rgba(255,181,71,.07); border-radius: 0 10px 10px 0; color: var(--muted); }
+  .faq h3 { margin: 22px 0 6px; font-size: 1.05rem; }
+  .faq p { margin: 0; color: var(--muted); }
+  footer { border-top: 1px solid var(--border); padding: 26px 0; color: var(--muted); font-size: .9rem; }
+  @media (max-width: 600px) { nav a:not(.gh) { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="34" height="34"><b>V7<span>-Shield</span></b></a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/TheVaibhaw/V7-Shield">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <h1>Find webshells and hidden malware on your PHP sites</h1>
+    <p>V7-Shield is a free, open-source, read-only malware scanner for WordPress, Joomla and custom PHP projects. It runs on your own server and never touches your files.</p>
+    <a class="btn btn-main" href="https://github.com/TheVaibhaw/V7-Shield">View on GitHub</a>
+    <a class="btn btn-alt" href="#install">Install in 1 minute</a>
+    <div class="shot"><img src="screenshots/dashboard.png" alt="V7-Shield dashboard showing scan results by severity" width="1440" height="1000"></div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>What it checks</h2>
+      <div class="grid">
+        <div class="card"><h3>Webshells and backdoors</h3><p>Request data reaching <code>eval</code>, shell commands, <code>include</code> or file writes, plus known webshell markers.</p></div>
+        <div class="card"><h3>Obfuscated code</h3><p>Decode-and-execute chains, long base64 blobs, hex-escaped strings and <code>chr()</code> assembly.</p></div>
+        <div class="card"><h3>Disguised files</h3><p>PHP hidden inside images or text files, extension/content mismatches and stray executables in upload folders.</p></div>
+        <div class="card"><h3>Safe by design</h3><p>Read-only scanning. It never follows symlinks, limits size, depth and time, and only scans directories you configure.</p></div>
+        <div class="card"><h3>Clear results</h3><p>Every finding has a severity, a confidence score, a short evidence excerpt, a SHA-256 hash and its known false positives.</p></div>
+        <div class="card"><h3>No dependencies</h3><p>Core PHP 8.1+, MySQL and vanilla JavaScript. No Composer, no npm and no build step.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install</h2>
+      <p>You need PHP 8.1 or newer with <code>pdo_mysql</code>, and MySQL 8 or MariaDB 10.6+.</p>
+<pre>git clone https://github.com/TheVaibhaw/V7-Shield.git
+cd V7-Shield
+php start.php</pre>
+      <p>Open <code>http://127.0.0.1:8000/</code>, sign in, and point it at the folder you want to check. The <a href="https://github.com/TheVaibhaw/V7-Shield#readme">README</a> covers server deployment and configuration.</p>
+      <p class="note">V7-Shield reports <strong>suspicious indicators</strong>, not confirmed malware. Its rules are heuristics that can miss threats and flag legitimate code, so review every finding before you act.</p>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <div class="wrap">
+      <h2>FAQ</h2>
+      <h3>Can it scan a WordPress site for malware?</h3>
+      <p>Yes. Add the site's directory as a scan target. It flags webshells in <code>wp-content/uploads</code>, obfuscated plugin code, PHP disguised as images and similar indicators.</p>
+      <h3>Does it delete or clean infected files?</h3>
+      <p>No. It's strictly read-only, so you decide what to do with each finding. Quarantine with human approval is on the roadmap.</p>
+      <h3>Is it free?</h3>
+      <p>Yes. It's MIT-licensed, and you can use it commercially.</p>
+      <h3>How is it different from a WordPress security plugin?</h3>
+      <p>It runs separately from the site it scans instead of as a plugin inside it, and it works the same way for WordPress, Joomla and plain PHP projects.</p>
+      <h3>How can I help?</h3>
+      <p>New detection rules and false-positive reports are the most useful contributions. See the <a href="https://github.com/TheVaibhaw/V7-Shield/labels/good%20first%20issue">good first issues</a> and the <a href="https://github.com/TheVaibhaw/V7-Shield/blob/main/CONTRIBUTING.md">contributing guide</a>.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">V7-Shield is MIT-licensed open source by <a href="https://github.com/TheVaibhaw">Vaibhaw Kumar</a> and contributors. · <a href="https://github.com/TheVaibhaw/V7-Shield/releases">Releases</a> · <a href="https://github.com/TheVaibhaw/V7-Shield/blob/main/SECURITY.md">Security</a></div>
+</footer>
+</body>
+</html>
