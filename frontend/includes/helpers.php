@@ -1,10 +1,15 @@
 <?php
 /**
- * Small view helpers. Every function that outputs dynamic text escapes it.
+ * View helpers. Every function that outputs dynamic text escapes it.
  */
 declare(strict_types=1);
 
 defined('APP_ROOT') || exit;
+
+use V7Shield\Database;
+use V7Shield\Repository\ScanRepository;
+use V7Shield\Security\Csrf;
+use V7Shield\Service\ScanService;
 
 /** Escape a value for HTML output. */
 function e(mixed $value): string
@@ -36,7 +41,7 @@ function asset(string $path): string
     return url('assets/' . $path) . '?v=' . $v;
 }
 
-/** Look up a page by key in the nav allowlist. */
+/** Look up a page by key in the nav/hidden allowlist. */
 function nav_item(string $key): ?array
 {
     global $config;
@@ -46,21 +51,27 @@ function nav_item(string $key): ?array
             return compact('group', 'title', 'icon', 'path');
         }
     }
+    if (isset($config['hidden'][$key])) {
+        [$title, $icon, $path, $group] = $config['hidden'][$key];
+        return compact('group', 'title', 'icon', 'path');
+    }
     return null;
 }
 
-function page_url(string $key): string
+function page_url(string $key, array $query = []): string
 {
     $item = nav_item($key);
-    return $item ? url($item['path']) : url('dashboard.php');
+    $u = $item ? url($item['path']) : url('dashboard.php');
+    return $query ? $u . '?' . http_build_query($query) : $u;
 }
 
 /** Render the page shell top: <head>, sidebar, topbar. */
 function render_header(string $pageKey, ?string $title = null): void
 {
-    global $config, $demo;
-    $item = nav_item($pageKey) ?? ['group' => 'Overview', 'title' => 'Dashboard', 'icon' => 'grid', 'path' => 'dashboard.php'];
+    global $config, $auth;
+    $item = nav_item($pageKey) ?? throw new LogicException('Page not in allowlist: ' . $pageKey);
     $pageTitle = $title ?? $item['title'];
+    $navKey = $pageKey === 'scan' ? 'scan-history' : $pageKey;
     require APP_ROOT . '/includes/header.php';
     require APP_ROOT . '/includes/sidebar.php';
     echo '<div class="app-main">';
@@ -70,7 +81,7 @@ function render_header(string $pageKey, ?string $title = null): void
 
 function render_footer(): void
 {
-    global $config, $demo;
+    global $config, $v7;
     echo '</main>';
     require APP_ROOT . '/includes/footer.php';
 }
@@ -94,9 +105,10 @@ function page_header(string $title, string $desc = '', string $actionsHtml = '')
     echo '</div>';
 }
 
-function demo_notice(string $text = 'All data on this page is sample data for UI demonstration. No real scan has been performed.'): string
+/** Notice box. $type: info | warning | danger | success */
+function notice(string $type, string $html, string $icon = 'info-circle'): string
 {
-    return '<div class="notice notice-demo" role="note">' . icon('info-circle') . '<span><strong>Demo Mode.</strong> ' . e($text) . '</span></div>';
+    return '<div class="notice notice-' . e($type) . '" role="' . ($type === 'danger' ? 'alert' : 'note') . '">' . icon($icon) . '<span>' . $html . '</span></div>';
 }
 
 function severity_class(string $sev): string
@@ -104,29 +116,28 @@ function severity_class(string $sev): string
     return match (strtolower($sev)) {
         'critical' => 'crit',
         'high'     => 'high',
-        'medium', 'warning' => 'med',
+        'medium'   => 'med',
         'low'      => 'low',
-        'info', 'informational' => 'info',
         default    => 'neutral',
     };
 }
 
 function sev_badge(string $sev): string
 {
-    return '<span class="badge sev-' . severity_class($sev) . '"><span class="dot"></span>' . e($sev) . '</span>';
+    return '<span class="badge sev-' . severity_class($sev) . '"><span class="dot"></span>' . e(ucfirst($sev)) . '</span>';
 }
 
 function status_badge(string $status): string
 {
     $cls = match (strtolower($status)) {
-        'completed', 'healthy', 'resolved', 'protected', 'passed', 'active', 'verified', 'connected', 'restored' => 'ok',
-        'running', 'in review', 'reviewing', 'investigating' => 'run',
-        'queued', 'scheduled', 'pending', 'new', 'unreviewed', 'paused' => 'queue',
-        'failed', 'at risk', 'critical', 'error' => 'bad',
-        'needs attention', 'warning', 'outdated', 'drifted' => 'warn',
+        'completed', 'passed', 'configured', 'enabled' => 'ok',
+        'running' => 'run',
+        'queued', 'pending' => 'queue',
+        'failed', 'error', 'missing' => 'bad',
+        'warning', 'limit reached', 'not configured' => 'warn',
         default => 'neutral',
     };
-    return '<span class="status st-' . $cls . '">' . e($status) . '</span>';
+    return '<span class="status st-' . $cls . '">' . e(ucfirst($status)) . '</span>';
 }
 
 function progress_bar(int $pct, string $cls = ''): string
@@ -135,72 +146,16 @@ function progress_bar(int $pct, string $cls = ''): string
     return '<div class="progress ' . e($cls) . '" role="progressbar" aria-valuenow="' . $pct . '" aria-valuemin="0" aria-valuemax="100" aria-label="Progress"><span style="width:' . $pct . '%"></span></div>';
 }
 
-/** Button that opens the detail drawer with the given key/value record. */
-function detail_button(string $title, array $record, string $label = 'View'): string
-{
-    $json = json_encode(['title' => $title, 'fields' => $record], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
-    return '<button type="button" class="btn btn-ghost btn-sm" data-detail="' . e((string) $json) . '">' . icon('eye') . ' ' . e($label) . '</button>';
-}
-
 /** Metric/stat card. */
-function stat_card(string $icon, string $label, string $value, string $tone = 'cyan', string $trend = '', string $tip = ''): string
+function stat_card(string $icon, string $label, string $value, string $tone = 'cyan', string $tip = ''): string
 {
-    $h = '<div class="stat-card tone-' . e($tone) . '"' . ($tip ? ' title="' . e($tip) . '"' : '') . '>';
+    $h = '<div class="stat-card tone-' . e($tone) . '">';
     $h .= '<div class="stat-icon">' . icon($icon) . '</div><div class="stat-body">';
     $h .= '<div class="stat-value">' . e($value) . '</div><div class="stat-label">' . e($label);
     if ($tip) {
         $h .= ' <span class="tip" tabindex="0" aria-label="' . e($tip) . '" data-tip="' . e($tip) . '">' . icon('info-circle') . '</span>';
     }
-    $h .= '</div>';
-    if ($trend !== '') {
-        $up = str_starts_with($trend, '+');
-        $h .= '<div class="stat-trend ' . ($up ? 'up' : 'down') . '">' . icon($up ? 'arrow-up-right' : 'arrow-down-right') . ' ' . e($trend) . '</div>';
-    }
-    return $h . '</div></div>';
-}
-
-/**
- * Render an enhanced data table (search, filters, sort, pagination handled by app.js).
- *
- * @param array<string, array{0:string,1?:callable|null}> $columns key => [label, renderer]
- * @param list<array<string,mixed>> $rows
- * @param array<string, list<string>> $filters row-key => allowed values
- */
-function data_table(string $id, array $columns, array $rows, array $filters = [], int $perPage = 8, string $emptyText = 'No records match your filters.'): void
-{
-    echo '<div class="table-tools" data-table-for="' . e($id) . '">';
-    echo '<label class="search-field">' . icon('search') . '<span class="sr-only">Search table</span><input type="search" placeholder="Search…" data-table-search></label>';
-    foreach ($filters as $key => $values) {
-        echo '<label class="select-field"><span class="sr-only">Filter by ' . e($key) . '</span><select data-table-filter="' . e($key) . '"><option value="">All ' . e(ucfirst(str_replace('_', ' ', $key))) . '</option>';
-        foreach ($values as $v) {
-            echo '<option value="' . e(strtolower($v)) . '">' . e($v) . '</option>';
-        }
-        echo '</select></label>';
-    }
-    echo '</div>';
-    echo '<div class="table-wrap"><table class="data-table" id="' . e($id) . '" data-per-page="' . $perPage . '"><thead><tr>';
-    foreach ($columns as $key => $col) {
-        $sortable = !str_starts_with($key, '_');
-        echo '<th scope="col"' . ($sortable ? ' data-sort="' . e($key) . '" tabindex="0" aria-sort="none"' : '') . '>' . e($col[0]) . '</th>';
-    }
-    echo '</tr></thead><tbody>';
-    foreach ($rows as $row) {
-        $attrs = '';
-        foreach (array_keys($filters) as $fk) {
-            $attrs .= ' data-' . e($fk) . '="' . e(strtolower((string) ($row[$fk] ?? ''))) . '"';
-        }
-        echo '<tr' . $attrs . '>';
-        foreach ($columns as $key => $col) {
-            $raw = $row[$key] ?? '';
-            $html = isset($col[1]) && $col[1] !== null ? ($col[1])($row) : e($raw);
-            $sortVal = is_scalar($raw) ? (string) $raw : '';
-            echo '<td data-label="' . e($col[0]) . '" data-value="' . e($sortVal) . '">' . $html . '</td>';
-        }
-        echo '</tr>';
-    }
-    echo '</tbody></table>';
-    echo '<div class="empty-state" hidden>' . icon('inbox') . '<p>' . e($emptyText) . '</p></div></div>';
-    echo '<div class="pager" data-pager-for="' . e($id) . '"></div>';
+    return $h . '</div></div></div>';
 }
 
 function card_open(string $title, string $icon = '', string $extraHtml = '', string $class = ''): void
@@ -213,88 +168,135 @@ function card_close(): void
     echo '</div></section>';
 }
 
-/** Key/value checklist rows: [label, status, note]. */
-function check_list(array $items): void
+function empty_state(string $icon, string $text, string $actionHtml = ''): string
 {
-    echo '<ul class="check-list">';
-    foreach ($items as [$label, $status, $note]) {
-        echo '<li><div><strong>' . e($label) . '</strong><span class="muted">' . e($note) . '</span></div>' . status_badge($status) . '</li>';
+    return '<div class="empty-state">' . icon($icon) . '<p>' . e($text) . '</p>' . $actionHtml . '</div>';
+}
+
+/* ---------- Backend access ---------- */
+
+/** Lazily build the scan service. Throws ServiceException (safe message) if the DB is unavailable. */
+function scan_service(): ScanService
+{
+    global $v7;
+    static $svc = null;
+    return $svc ??= new ScanService($v7, new ScanRepository(Database::connect($v7)));
+}
+
+/** Run a backend call for a page; returns [result, errorMessage]. */
+function try_backend(callable $fn): array
+{
+    try {
+        return [$fn(scan_service()), null];
+    } catch (V7Shield\ServiceException $e) {
+        return [null, $e->getMessage()];
+    } catch (Throwable $e) {
+        error_log('[V7-Shield] ' . $e->getMessage());
+        return [null, 'The scanner backend returned an error. Check the server log.'];
     }
-    echo '</ul>';
 }
 
-function demo_action(string $label, string $icon, string $message, string $class = 'btn-ghost'): string
+function csrf_token(): string
 {
-    return '<button type="button" class="btn ' . e($class) . '" data-demo-toast="' . e($message) . '">' . icon($icon) . ' ' . e($label) . '</button>';
+    return Csrf::token();
 }
 
-/* ---------- Shared table column sets ---------- */
-
-function finding_columns(): array
+function csrf_field(): string
 {
-    return [
-        'id' => ['ID', fn($r) => '<code>' . e($r['id']) . '</code>'],
-        'severity' => ['Severity', fn($r) => sev_badge($r['severity'])],
-        'title' => ['Finding', fn($r) => '<strong>' . e($r['title']) . '</strong>'],
-        'resource' => ['Affected resource', fn($r) => '<code class="trunc" title="' . e($r['resource']) . '">' . e($r['resource']) . '</code>'],
-        'project' => ['Project'],
-        'category' => ['Category'],
-        'confidence' => ['Confidence'],
-        'detected' => ['Detected'],
-        'status' => ['Review', fn($r) => status_badge($r['status'])],
-        '_act' => ['', fn($r) => detail_button($r['title'], $r)],
-    ];
+    return '<input type="hidden" name="csrf" value="' . e(Csrf::token()) . '">';
 }
 
-function scan_columns(): array
+function json_response(array $data, int $status = 200): never
 {
-    return [
-        'started' => ['Date'],
-        'name' => ['Scan', fn($r) => '<strong>' . e($r['name']) . '</strong>'],
-        'project' => ['Project'],
-        'type' => ['Type'],
-        'duration' => ['Duration'],
-        'files' => ['Files', fn($r) => e(number_format($r['files']))],
-        'findings' => ['Findings'],
-        'status' => ['Status', fn($r) => status_badge($r['status'])],
-        '_act' => ['', fn($r) => detail_button($r['name'], $r)],
-    ];
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
 }
 
-function event_columns(): array
+function int_param(array $src, string $key, int $default = 0, int $min = 0, int $max = PHP_INT_MAX): int
 {
-    return [
-        'time' => ['Timestamp', fn($r) => '<span class="mono">' . e($r['time']) . '</span>'],
-        'category' => ['Category'],
-        'severity' => ['Severity', fn($r) => sev_badge($r['severity'])],
-        'source' => ['Source'],
-        'project' => ['Project'],
-        'title' => ['Event', fn($r) => '<strong>' . e($r['title']) . '</strong><small class="muted">' . e($r['desc']) . '</small>'],
-        '_act' => ['', fn($r) => detail_button($r['title'], $r)],
-    ];
+    $v = filter_var($src[$key] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => $min, 'max_range' => $max]]);
+    return $v === false ? $default : $v;
 }
 
-function change_columns(): array
+function str_param(array $src, string $key): ?string
 {
-    return [
-        'change' => ['Change', fn($r) => '<span class="chg chg-' . e(strtolower($r['change'])) . '">' . e($r['change']) . '</span>'],
-        'file' => ['File', fn($r) => '<code class="trunc" title="' . e($r['file']) . '">' . e($r['file']) . '</code>'],
-        'project' => ['Project'],
-        'size' => ['Size'],
-        'hash' => ['SHA-256 (truncated)', fn($r) => '<span class="mono">' . e($r['hash']) . '</span>'],
-        'when' => ['Detected'],
-        '_act' => ['', fn($r) => detail_button($r['file'], $r)],
-    ];
+    $v = $src[$key] ?? null;
+    return is_string($v) && $v !== '' ? $v : null;
 }
 
-/** Filter demo rows by a column value. */
-function rows_where(array $rows, string $key, array $values): array
+/* ---------- Formatting ---------- */
+
+/** Render a UTC DB timestamp; the browser converts it to local time (data-utc). */
+function fmt_dt(?string $utc): string
 {
-    return array_values(array_filter($rows, fn($r) => in_array($r[$key] ?? null, $values, true)));
+    if ($utc === null || $utc === '') {
+        return '<span class="muted">—</span>';
+    }
+    return '<time datetime="' . e(str_replace(' ', 'T', $utc)) . 'Z" data-utc>' . e($utc) . ' UTC</time>';
 }
 
-function export_buttons(string $tableId): string
+function fmt_duration(?string $start, ?string $end): string
 {
-    return '<button type="button" class="btn btn-ghost btn-sm" data-export="' . e($tableId) . '" data-format="csv">' . icon('filetype-csv') . ' CSV</button>'
-        . '<button type="button" class="btn btn-ghost btn-sm" data-export="' . e($tableId) . '" data-format="json">' . icon('filetype-json') . ' JSON</button>';
+    if (!$start) {
+        return '—';
+    }
+    $s = max(0, ($end ? strtotime($end . ' UTC') : time()) - strtotime($start . ' UTC'));
+    return $s >= 60 ? intdiv($s, 60) . 'm ' . str_pad((string) ($s % 60), 2, '0', STR_PAD_LEFT) . 's' : $s . 's';
+}
+
+function fmt_bytes(int $b): string
+{
+    return V7Shield\Scanner\Scanner::bytes($b);
+}
+
+/** Server-side pager preserving the current query string. */
+function pager(int $page, int $pages, int $total, array $query): string
+{
+    $h = '<nav class="pager" aria-label="Pagination"><span>' . e(number_format($total)) . ' result' . ($total === 1 ? '' : 's') . '</span>';
+    if ($pages > 1) {
+        $h .= '<div class="pages">';
+        $link = function (int $p, string $label, bool $current = false, bool $disabled = false) use ($query): string {
+            if ($disabled) {
+                return '<button type="button" disabled>' . $label . '</button>';
+            }
+            return '<a class="pg' . ($current ? ' current' : '') . '"' . ($current ? ' aria-current="page"' : '') . ' href="?' . e(http_build_query(['page' => $p] + $query)) . '">' . $label . '</a>';
+        };
+        $h .= $link($page - 1, '&lsaquo;', false, $page <= 1);
+        for ($p = max(1, $page - 2); $p <= min($pages, $page + 2); $p++) {
+            $h .= $link($p, (string) $p, $p === $page);
+        }
+        $h .= $link($page + 1, '&rsaquo;', false, $page >= $pages);
+        $h .= '</div>';
+    }
+    return $h . '</nav>';
+}
+
+function scan_status_label(array $job): string
+{
+    $label = status_badge($job['status']);
+    if ($job['status'] === 'completed' && $job['limit_reached']) {
+        $label .= ' ' . status_badge('limit reached');
+    }
+    return $label;
+}
+
+/** Inline severity breakdown for a job. */
+function severity_chips(array $job): string
+{
+    $h = '<span class="sev-chips">';
+    foreach (['critical', 'high', 'medium', 'low'] as $s) {
+        if ($job[$s] > 0) {
+            $h .= '<span class="badge sev-' . severity_class($s) . '" title="' . e(ucfirst($s)) . '">' . (int) $job[$s] . '</span>';
+        }
+    }
+    return $h . ($job['findings_count'] === 0 ? '<span class="muted">0</span>' : '') . '</span>';
+}
+
+/** Button that opens the detail drawer with label => value pairs (rendered as text by app.js). */
+function detail_button(string $title, array $fields, string $label = 'Details'): string
+{
+    $json = json_encode(['title' => $title, 'fields' => $fields], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE);
+    return '<button type="button" class="btn btn-ghost btn-sm" data-detail="' . e((string) $json) . '">' . icon('eye') . ' ' . e($label) . '</button>';
 }

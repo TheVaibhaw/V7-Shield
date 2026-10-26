@@ -15,6 +15,6 @@
 <link rel="stylesheet" href="<?= e(asset('css/dashboard.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/responsive.css')) ?>">
 </head>
-<body data-page="<?= e($pageKey) ?>">
+<body data-page="<?= e($pageKey) ?>" data-csrf="<?= e(csrf_token()) ?>" data-api="<?= e(url('api.php')) ?>">
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="app">

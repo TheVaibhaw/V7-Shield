@@ -1,0 +1,130 @@
+<?php
+declare(strict_types=1);
+
+$req = '\$_(?:GET|POST|REQUEST|COOKIE|SERVER|FILES)\b';
+
+return [
+    'version' => '2026.10.1',
+    'rules' => [
+        [
+            'id' => 'V7-OBF-001', 'name' => 'Evaluation of decoded data', 'category' => 'obfuscation',
+            'severity' => 'critical', 'confidence' => 90,
+            'pattern' => '~\b(?:eval|assert)\s*\(\s*(?:@\s*)?(?:base64_decode|gzinflate|gzuncompress|gzdecode|str_rot13|strrev|hex2bin|convert_uudecode)\s*\(~i',
+            'description' => 'Decoded or decompressed data is passed directly to eval/assert, a common way to hide payloads.',
+            'false_positives' => 'Rare. Some old commercial licence loaders (ionCube-style stubs) use similar constructs.',
+        ],
+        [
+            'id' => 'V7-EXEC-001', 'name' => 'Request data reaches eval/assert', 'category' => 'execution',
+            'severity' => 'critical', 'confidence' => 90,
+            'pattern' => '~\b(?:eval|assert)\s*\([^;]{0,120}' . $req . '~i',
+            'description' => 'User-controlled input appears inside a dynamic code evaluation call.',
+            'false_positives' => 'Very rare in legitimate code.',
+        ],
+        [
+            'id' => 'V7-EXEC-002', 'name' => 'Request data reaches OS command execution', 'category' => 'execution',
+            'severity' => 'critical', 'confidence' => 85,
+            'pattern' => '~\b(?:system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\([^;]{0,120}' . $req . '~i',
+            'description' => 'User-controlled input appears in a shell command call (webshell or command injection).',
+            'false_positives' => 'Admin tools that pass sanitised request parameters to CLI programs.',
+        ],
+        [
+            'id' => 'V7-EXEC-003', 'name' => 'Request data used as a function name', 'category' => 'execution',
+            'severity' => 'high', 'confidence' => 80,
+            'pattern' => '~' . $req . '\s*\[[^\]]{1,60}\]\s*\(~i',
+            'description' => 'A value from the request is called as a function, e.g. $_GET["f"]($_GET["a"]).',
+            'false_positives' => 'Uncommon; some routers dispatch callbacks but rarely directly from superglobals.',
+        ],
+        [
+            'id' => 'V7-EXEC-004', 'name' => 'preg_replace with /e modifier', 'category' => 'execution',
+            'severity' => 'high', 'confidence' => 70,
+            'pattern' => '~\bpreg_replace\s*\(\s*([\'"])(.)[^\'"]{0,200}\2[a-df-zA-Z]*e[a-zA-Z]*\1\s*,~',
+            'description' => 'The /e modifier evaluates replacement text as PHP (removed in PHP 7, still used by backdoors).',
+            'false_positives' => 'Legacy code written for PHP 5.',
+        ],
+        [
+            'id' => 'V7-EXEC-005', 'name' => 'create_function usage', 'category' => 'execution',
+            'severity' => 'medium', 'confidence' => 45,
+            'pattern' => '~\bcreate_function\s*\(~i',
+            'description' => 'create_function compiles code from a string (deprecated, removed in PHP 8).',
+            'false_positives' => 'Old plugins and libraries written before PHP 5.3 closures.',
+        ],
+        [
+            'id' => 'V7-EXEC-006', 'name' => 'Error-suppressed dangerous call', 'category' => 'execution',
+            'severity' => 'medium', 'confidence' => 55,
+            'pattern' => '~@\s*(?:eval|assert|system|exec|shell_exec|passthru)\s*\(~i',
+            'description' => 'A dangerous function is called with the @ operator to hide errors.',
+            'false_positives' => 'Some legacy scripts suppress errors from exec() when probing the environment.',
+        ],
+        [
+            'id' => 'V7-OBF-002', 'name' => 'Nested decode/decompress chain', 'category' => 'obfuscation',
+            'severity' => 'high', 'confidence' => 70,
+            'pattern' => '~\b(?:gzinflate|gzuncompress|gzdecode|str_rot13)\s*\(\s*(?:base64_decode|str_rot13|strrev)\s*\(~i',
+            'description' => 'Layered decoding typical of packed payloads.',
+            'false_positives' => 'Packed assets in some themes; caching plugins that store compressed data.',
+        ],
+        [
+            'id' => 'V7-OBF-003', 'name' => 'Very long encoded string', 'category' => 'obfuscation',
+            'severity' => 'medium', 'confidence' => 40,
+            'pattern' => '~[\'"][A-Za-z0-9+/]{1000,}={0,2}[\'"]~',
+            'description' => 'A base64-like literal longer than 1000 characters.',
+            'false_positives' => 'Embedded images, fonts, certificates or licence keys.',
+        ],
+        [
+            'id' => 'V7-OBF-004', 'name' => 'Long hex-escaped string', 'category' => 'obfuscation',
+            'severity' => 'medium', 'confidence' => 50,
+            'pattern' => '~(?:\\\\x[0-9a-fA-F]{2}){30,}~',
+            'description' => 'A string made of 30+ consecutive \xNN escapes, often used to hide function names.',
+            'false_positives' => 'Binary protocol constants, test vectors.',
+        ],
+        [
+            'id' => 'V7-OBF-005', 'name' => 'chr() concatenation chain', 'category' => 'obfuscation',
+            'severity' => 'medium', 'confidence' => 50,
+            'pattern' => '~(?:chr\s*\(\s*\d+\s*\)\s*\.\s*){8,}~i',
+            'description' => 'A string assembled from 8+ chr() calls to avoid readable keywords.',
+            'false_positives' => 'Rare; occasionally used for control characters.',
+        ],
+        [
+            'id' => 'V7-WS-001', 'name' => 'Known webshell marker', 'category' => 'webshell',
+            'severity' => 'high', 'confidence' => 80,
+            'pattern' => '~\b(?:c99shell|r57shell|b374k|FilesMan|WSO\s+[0-9.]+|weevely|IndoXploit|Alfa\s*Shell)\b~i',
+            'description' => 'Text commonly found in publicly known webshells.',
+            'false_positives' => 'Security tools, blog posts or rule files that mention these names.',
+        ],
+        [
+            'id' => 'V7-WS-002', 'name' => 'Request data written to a file', 'category' => 'webshell',
+            'severity' => 'high', 'confidence' => 65,
+            'pattern' => '~\b(?:file_put_contents|fwrite|fputs)\s*\([^;]{0,160}' . $req . '~i',
+            'description' => 'Request input is written directly to disk (uploader/dropper behaviour).',
+            'false_positives' => 'Legitimate upload or import handlers; check for validation and fixed paths.',
+        ],
+        [
+            'id' => 'V7-RCE-001', 'name' => 'Include of request-controlled path', 'category' => 'remote-code',
+            'severity' => 'critical', 'confidence' => 85,
+            'pattern' => '~\b(?:include|require)(?:_once)?\s*\(?\s*[^;]{0,40}' . $req . '~i',
+            'description' => 'include/require uses request input (local/remote file inclusion).',
+            'false_positives' => 'Routers that map a whitelisted request value to a file.',
+        ],
+        [
+            'id' => 'V7-RCE-002', 'name' => 'Remote URL include', 'category' => 'remote-code',
+            'severity' => 'high', 'confidence' => 75,
+            'pattern' => '~\b(?:include|require)(?:_once)?\s*\(?\s*[\'"](?:https?|ftp|php|data)://~i',
+            'description' => 'Code is included from a remote or stream URL.',
+            'false_positives' => 'Very rare; php://stdin in CLI scripts.',
+        ],
+    ],
+
+    'builtin' => [
+        'V7-SIG-001' => ['name' => 'PHP code inside a non-PHP file', 'category' => 'file-signature', 'severity' => 'critical', 'confidence' => 85,
+            'description' => 'A PHP open tag was found in a file whose extension is not executed as PHP by default (e.g. an image). Often used with upload or include vulnerabilities.',
+            'false_positives' => 'Documentation or templates that contain PHP examples (.txt, .md, .tpl).'],
+        'V7-SIG-002' => ['name' => 'Extension does not match file content', 'category' => 'file-signature', 'severity' => 'medium', 'confidence' => 50,
+            'description' => 'The file content signature does not match its extension (e.g. .jpg that is not a JPEG).',
+            'false_positives' => 'Misnamed media files, WebP served as .jpg by some CDNs.'],
+        'V7-SIG-003' => ['name' => 'Executable binary in web directory', 'category' => 'file-signature', 'severity' => 'high', 'confidence' => 70,
+            'description' => 'An ELF/PE/Mach-O executable was found inside the scanned project.',
+            'false_positives' => 'Bundled CLI tools (e.g. wkhtmltopdf, image optimisers).'],
+        'V7-FS-001' => ['name' => 'Alternative PHP extension', 'category' => 'file-signature', 'severity' => 'low', 'confidence' => 30,
+            'description' => 'File uses an alternative PHP extension (.phtml, .phar, .php5, .pht, …) that some servers execute.',
+            'false_positives' => 'Template engines (.phtml in Magento/Zend) and legitimate Phar archives.'],
+    ],
+];

@@ -1,4 +1,3 @@
-/* V7-Shield — Chart.js helpers. Charts re-theme when the theme toggles. */
 (() => {
   'use strict';
 
@@ -17,7 +16,6 @@
     return { backgroundColor: css('--surface-3'), titleColor: css('--text'), bodyColor: css('--text-2'), borderColor: css('--border-strong'), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true };
   }
 
-  /** Stacked area chart of findings by severity. */
   function severityArea(canvas, series) {
     themeDefaults();
     const ctx = canvas.getContext('2d');
@@ -44,7 +42,6 @@
     return chart;
   }
 
-  /** Doughnut chart: labels + values + css color tokens. */
   function doughnut(canvas, labels, values, tokens) {
     themeDefaults();
     const chart = new Chart(canvas, {
@@ -57,7 +54,6 @@
     return chart;
   }
 
-  /** Simple bar chart. */
   function bars(canvas, labels, values, token = '--cyan') {
     themeDefaults();
     const chart = new Chart(canvas, {
@@ -81,7 +77,6 @@
     });
   });
 
-  // Declarative charts: <canvas data-chart="doughnut|bar" data-labels='[]' data-values='[]' data-colors='[]'>
   function initDeclarative() {
     if (!window.Chart) return;
     document.querySelectorAll('canvas[data-chart]').forEach((c) => {

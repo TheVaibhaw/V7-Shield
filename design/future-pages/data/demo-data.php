@@ -1,9 +1,4 @@
 <?php
-/**
- * Centralized DEMO data. Nothing here comes from a real scan.
- * Replace each section with backend API responses once the backend exists
- * (see README "Backend integration").
- */
 declare(strict_types=1);
 
 defined('APP_ROOT') || exit;
@@ -108,7 +103,6 @@ $notifications = [
     ['id' => 6, 'severity' => 'High', 'category' => 'Account', 'title' => 'New administrator detected', 'body' => '"support_tmp" on Northwind Store.', 'time' => '19 h ago', 'read' => false],
 ];
 
-// Deterministic chart series for the threat activity chart.
 $series = [];
 foreach (['24h' => 24, '7d' => 7, '30d' => 30, '90d' => 90] as $range => $points) {
     mt_srand(crc32($range));
