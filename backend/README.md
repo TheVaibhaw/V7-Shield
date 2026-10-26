@@ -37,7 +37,7 @@ Only keys you set override the defaults in `config.example.php`. You can also po
 | Key | Meaning |
 |---|---|
 | `database.dsn/username/password` | PDO connection. Use a user limited to `SELECT, INSERT, UPDATE, DELETE` on the V7-Shield database. |
-| `users` | `username => password_hash`. Generate hashes with `php backend/bin/hash-password.php`. |
+| `users` | Optional extra logins: `username => password_hash` (generate with `php backend/bin/hash-password.php`). The schema already creates a default `admin` / `Admin@12345` in the `users` table, which must be changed at first login. |
 | `targets` | `id => ['label' => ..., 'path' => '/abs/dir']`. **These are the only directories that can be scanned.** The browser only ever submits the id. |
 | `scanner.max_file_size` / `max_depth` / `max_files` / `max_duration` | Hard limits per scan. Files over the limit are skipped and reported. Hitting the file or time limit ends the scan as "completed (limit reached)". |
 | `scanner.exclusions` | `fnmatch` globs. A pattern without `/` matches the file name at any depth, and a trailing `/` matches directories only (`node_modules/`, `*.log`, `wp-content/cache/`). |
@@ -107,10 +107,11 @@ Add or tune rules in `config/rules.php`. Patterns use the `~` delimiter and are 
 
 ## Database
 
-`database/schema.sql` creates three InnoDB tables:
+`database/schema.sql` creates four InnoDB tables and seeds the default `admin` user:
 - `scan_jobs`: status, timestamps, heartbeat, counts per severity, limit and error info, rule version, and the scope JSON (limits and exclusions, no paths)
 - `scan_findings`: indexed by scan + severity, rule and SHA-256
 - `scan_skips`: up to `max_skips_stored` entries per scan; the counts on the job are always exact
+- `users`: dashboard logins (bcrypt hash, `must_change_password`, `last_login_at`). The seeded `admin` has `must_change_password = 1`
 
 Deleting a job cascades to its findings and skips. All queries use PDO prepared statements, and finding and skip batches are inserted in transactions. Job claiming is atomic (`UPDATE … WHERE status='queued'`), and scan starts are serialised per target with `GET_LOCK`.
 
@@ -141,7 +142,8 @@ php backend/bin/worker.php [--loop]
 
 - Deploy so that **only `frontend/` is the document root**. `backend/` and `config.local.php` must not be reachable over HTTP. (`.htaccess` deny files are included as a fallback for Apache.)
 - Keep `config.local.php` out of git (it's in `.gitignore`) and readable only by the PHP user (`chmod 600`).
-- Authentication uses sessions:
+- Authentication uses sessions, against the `users` table and/or `users` in the config:
+  - the default `admin` / `Admin@12345` must be changed at first login (minimum 12 characters)
   - cookies are HttpOnly and SameSite=Strict, plus Secure over HTTPS
   - the session ID is regenerated on login, and sessions expire after a period of inactivity
   - logins are locked out per session after repeated failures
