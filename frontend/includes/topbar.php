@@ -15,6 +15,7 @@ $user = (string) $auth->user(); ?>
       <div class="dropdown-menu" role="menu">
         <div class="dd-head"><span><strong><?= e($user) ?></strong><small class="muted">Administrator</small></span></div>
         <a role="menuitem" href="<?= e(page_url('settings')) ?>"><?= icon('gear') ?> Settings</a>
+        <a role="menuitem" href="<?= e(url('change-password.php')) ?>"><?= icon('key') ?> Change password</a>
         <form method="post" action="<?= e(url('logout.php')) ?>"><?= csrf_field() ?><button role="menuitem" type="submit" class="dd-btn"><?= icon('box-arrow-right') ?> Sign out</button></form>
       </div>
     </div>
