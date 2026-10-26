@@ -13,11 +13,11 @@
 | `backend/` | Scanner engine, rule set, MySQL persistence, auth/CSRF, CLI tools, tests. **Must not be web-accessible.** |
 | `design/future-pages/` | UI mock-ups of planned features (not served, demo data only). |
 
-Core PHP 8.2+, HTML, CSS and vanilla JavaScript only. No framework, no Composer, no build step.
+Core PHP **8.1 – 8.5**, HTML, CSS and vanilla JavaScript only. No framework, no Composer, no build step.
 
 ## Run locally with one command
 
-Requirements: PHP 8.2+ with `pdo_mysql` and `mbstring`, and a running MySQL 8 / MariaDB 10.6+ server.
+Requirements: PHP **8.1 or newer** (tested on 8.1, 8.3 and 8.5) with the `pdo_mysql` extension, and a running MySQL 8 / MariaDB 10.6+ server. `mbstring` is optional; a built-in fallback is used without it.
 
 ```bash
 php start.php
@@ -59,7 +59,7 @@ chmod 600 backend/config/config.local.php
 # edit database credentials and 'targets' (the directories that may be scanned)
 
 # 3. Run (multiple workers so status polling works while a scan runs)
-PHP_CLI_SERVER_WORKERS=4 php -S localhost:8000 -t frontend
+PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t frontend backend/dev-router.php
 # open http://localhost:8000/ and sign in
 ```
 
@@ -74,6 +74,8 @@ The schema creates one administrator account:
 - At first sign-in you're **forced to change this password**. Until you do, every page redirects to *Change password* and the API returns `403`. The new password must be at least 12 characters.
 - You can change the password again any time from the account menu → **Change password**.
 - Re-running `schema.sql` is safe: it never resets an existing `admin` (`INSERT IGNORE`).
+
+**Upgrading an existing install:** run `php start.php --setup-only` (or `mysql -u root -p v7shield < backend/database/schema.sql`). Either one creates any newly added tables, such as `login_attempts` for login throttling, and leaves your data alone. Until the table exists, throttling falls back to a per-session counter.
 - Change the default password before exposing the dashboard on any network.
 
 **Forgot the password?** Reset it to the default (and force a change at next login):

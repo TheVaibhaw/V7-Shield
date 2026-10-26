@@ -22,7 +22,7 @@ The sidebar lists planned features under **Coming soon** without links. Their ea
 See the root [README](../README.md) for database and config setup. Then:
 
 ```bash
-PHP_CLI_SERVER_WORKERS=4 php -S localhost:8000 -t frontend
+php start.php      # or: PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t frontend backend/dev-router.php
 ```
 
 `PHP_CLI_SERVER_WORKERS` matters in inline execution mode: the request that runs the scan holds one worker while the page polls status on another.
@@ -52,4 +52,4 @@ frontend/
 
 - One administrator role. There's no user management UI; users are added in the backend config.
 - No quarantine, file integrity baselines, scheduling, CMS-specific checks, reports or notifications yet.
-- Icons, Chart.js and fonts load from public CDNs.
+- Chart.js 4.4.1 and Bootstrap Icons 1.11.3 are self-hosted in `assets/vendor/` (MIT licences included). Only the Inter / JetBrains Mono fonts come from Google Fonts; without internet the UI falls back to system fonts.

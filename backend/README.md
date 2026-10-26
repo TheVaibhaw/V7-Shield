@@ -26,7 +26,7 @@ backend/
 
 ## Prerequisites
 
-- PHP **8.2+** with `pdo_mysql` and `mbstring`
+- PHP **8.1 – 8.5** with `pdo_mysql` (`mbstring` optional)
 - MySQL 8 or MariaDB 10.6+
 - The web server user must be able to **read** the target directories. It never needs write access to them.
 
@@ -43,7 +43,9 @@ Only keys you set override the defaults in `config.example.php`. You can also po
 | `scanner.exclusions` | `fnmatch` globs. A pattern without `/` matches the file name at any depth, and a trailing `/` matches directories only (`node_modules/`, `*.log`, `wp-content/cache/`). |
 | `jobs.execution` | `inline` (default): the browser request that created the scan runs it, bounded by `max_duration`. `worker`: jobs wait for `bin/worker.php`. |
 | `jobs.max_starts_per_hour` | Per-user rate limit. Only one queued or running scan is allowed per target. |
-| `jobs.stale_after` | Running jobs with no progress heartbeat for this many seconds are marked failed. |
+| `jobs.stale_after` | Running jobs with no progress heartbeat for this many seconds are marked failed. In inline mode, queued jobs that never started are failed after the same time. |
+| `jobs.queued_timeout` | Worker mode: queued jobs older than this (default 3600 s) are marked failed, so one stuck job can't block a target. |
+| `security.session_lifetime` / `session_max_age` | Idle timeout (default 1 h) and absolute session lifetime (default 8 h). |
 
 ### Worker mode
 
@@ -107,11 +109,12 @@ Add or tune rules in `config/rules.php`. Patterns use the `~` delimiter and are 
 
 ## Database
 
-`database/schema.sql` creates four InnoDB tables and seeds the default `admin` user:
+`database/schema.sql` creates five InnoDB tables and seeds the default `admin` user:
 - `scan_jobs`: status, timestamps, heartbeat, counts per severity, limit and error info, rule version, and the scope JSON (limits and exclusions, no paths)
 - `scan_findings`: indexed by scan + severity, rule and SHA-256
 - `scan_skips`: up to `max_skips_stored` entries per scan; the counts on the job are always exact
 - `users`: dashboard logins (bcrypt hash, `must_change_password`, `last_login_at`). The seeded `admin` has `must_change_password = 1`
+- `login_attempts`: recent failed sign-ins, used for brute-force throttling (rows older than a day are pruned)
 
 Deleting a job cascades to its findings and skips. All queries use PDO prepared statements, and finding and skip batches are inserted in transactions. Job claiming is atomic (`UPDATE … WHERE status='queued'`), and scan starts are serialised per target with `GET_LOCK`.
 
@@ -144,10 +147,16 @@ php backend/bin/worker.php [--loop]
 - Keep `config.local.php` out of git (it's in `.gitignore`) and readable only by the PHP user (`chmod 600`).
 - Authentication uses sessions, against the `users` table and/or `users` in the config:
   - the default `admin` / `Admin@12345` must be changed at first login (minimum 12 characters)
+  - an account that still has its default password can only sign in **from the server itself** (localhost)
   - cookies are HttpOnly and SameSite=Strict, plus Secure over HTTPS
-  - the session ID is regenerated on login, and sessions expire after a period of inactivity
-  - logins are locked out per session after repeated failures
+  - the session ID is regenerated on login; sessions end after `session_lifetime` of inactivity **and** after `session_max_age` (8 h) in total
+  - changing a password signs out that account's other sessions
+  - failed logins are throttled **server-side** in `login_attempts`: 5 per username+IP, 20 per IP and 50 per username in 15 minutes. Deleting the cookie does not reset it.
   - all users are administrators; there are no roles yet
+- The dashboard sends a strict Content-Security-Policy (no inline scripts; scripts only from the same origin) plus `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. Chart.js and Bootstrap Icons are self-hosted in `frontend/assets/vendor/`, so no third-party scripts run.
+- Behind a reverse proxy, every request comes from the proxy's IP. Configure the proxy to block access to `/login.php` until the default password is changed, or change it before you put the proxy in front.
+- PHP's built-in server ignores `.htaccess`. `start.php` therefore runs it with `backend/dev-router.php`, which only serves the dashboard pages and `/assets/`.
+- The scanner opens each file once and checks that the opened inode is the one it listed and that the path still resolves inside the target. A file swapped for a symlink during a scan is skipped (reason `changed`), not followed.
 - Serve the dashboard over **HTTPS** in any non-local environment, and consider adding IP allow-listing or HTTP auth in front of it.
 - Run the PHP process as a user with **read-only** access to the targets.
 
