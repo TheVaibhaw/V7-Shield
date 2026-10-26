@@ -84,7 +84,7 @@ for p in dashboard.php pages/scans.php pages/findings.php "pages/findings.php?sc
 done
 expect "scan page for unknown id renders error" "$(curl -s -b "$JAR" "$BASE/pages/scan.php?id=99999999" | grep -c 'Scan not found')" 1
 expect "backend config not reachable" "$(code "$BASE/../backend/config/config.example.php")" 404
-expect "includes not executable directly" "$(curl -s -b "$JAR" "$BASE/includes/helpers.php" | wc -c | tr -d ' ')" 0
+expect "includes not served or executed" "$(code "$BASE/includes/helpers.php")" 404
 
 echo "Logout"
 LT=$(curl -s -b "$JAR" "$BASE/pages/settings.php" | csrf_from)
