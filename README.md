@@ -39,7 +39,7 @@ An open-source, **read-only** malware scanner for PHP websites (WordPress, Jooml
 | 📊 **Dashboard** | Severity breakdown, findings with truncated evidence and SHA-256, scan history, live scan status |
 | 🔐 **Hardened console** | Session auth, server-side brute-force throttling, forced change of the default password, strict CSP, self-hosted assets |
 | ⚙️ **Two execution modes** | Inline (bounded, in the browser request) or a CLI worker for cron |
-| 🧪 **Tested** | Unit, database and end-to-end HTTP tests on PHP 8.1 – 8.4 in CI |
+| 🧪 **Tested** | Unit and database tests on PHP 8.1 – 8.4 (plus a run without mbstring) and end-to-end HTTP tests in CI |
 
 ## Screenshots
 

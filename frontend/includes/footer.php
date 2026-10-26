@@ -1,7 +1,7 @@
 <?php defined('APP_ROOT') || exit; /** @var array $config */ ?>
 <footer class="app-footer">
   <span>&copy; <?= date('Y') ?> <?= e($config['name']) ?> · Open-source, read-only malware scanner · v<?= e($config['version']) ?></span>
-  <span>Heuristic findings are <strong>suspicious</strong> indicators for review, not confirmed malware.</span>
+  <span>Heuristic findings are <strong>suspicious</strong> indicators for review, not confirmed malware. · <a href="<?= e($config['repo_url']) ?>" target="_blank" rel="noopener noreferrer"><?= icon('github') ?> GitHub</a></span>
 </footer>
 </div>
 </div>
