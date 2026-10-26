@@ -12,7 +12,6 @@ final class Config
     public static function load(string $dir): self
     {
         $defaults = require $dir . '/config.example.php';
-        // V7SHIELD_CONFIG may point to a local config stored elsewhere (deployments, tests).
         $localFile = getenv('V7SHIELD_CONFIG') ?: $dir . '/config.local.php';
         $local = is_file($localFile) ? require $localFile : [];
         $data = array_replace_recursive($defaults, is_array($local) ? $local : []);

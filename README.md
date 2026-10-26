@@ -9,12 +9,42 @@
 | Path | Purpose |
 |---|---|
 | `frontend/` | PHP admin dashboard (public web root). Login, start scan, findings, history, settings. |
+| `start.php` | One-command local setup + run (`php start.php`). |
 | `backend/` | Scanner engine, rule set, MySQL persistence, auth/CSRF, CLI tools, tests. **Must not be web-accessible.** |
 | `design/future-pages/` | UI mock-ups of planned features (not served, demo data only). |
 
 Core PHP 8.2+, HTML, CSS and vanilla JavaScript only. No framework, no Composer, no build step.
 
-## Quick start (local)
+## Run locally with one command
+
+Requirements: PHP 8.2+ with `pdo_mysql` and `mbstring`, and a running MySQL 8 / MariaDB 10.6+ server.
+
+```bash
+php start.php
+```
+
+Then open **http://127.0.0.1:8000/** and sign in as `admin` / `Admin@12345` (see [Default login](#default-login)).
+
+The command:
+1. Checks the PHP version and extensions.
+2. Creates `backend/config/config.local.php` on first run, asking for the database host, name, user and password and (optionally) a directory to scan. It writes the file with `chmod 600`. If the file still has `CHANGE_ME` placeholders, it fills them in after saving a `.bak` copy.
+3. Connects to the database. If the database or user doesn't exist yet, it offers to create them with a MySQL admin account (e.g. `root`). It grants only `SELECT, INSERT, UPDATE, DELETE`, and **the admin password is used once and never saved**.
+4. Installs the schema only when tables are missing. Re-running never resets data or the admin password.
+5. Starts the dashboard on `127.0.0.1:8000` with 4 PHP workers. Press `Ctrl+C` to stop.
+
+Options:
+
+| Command | Purpose |
+|---|---|
+| `php start.php --port=8080` | Use another port (it refuses to start if the port is taken) |
+| `php start.php --setup-only` | Prepare config and database without starting the server |
+| `php start.php --host=0.0.0.0` | Listen on all interfaces. Avoid this on shared networks. |
+
+After the first run, `php start.php` just checks everything and starts the server without asking questions. To scan something, add a directory under `targets` in `backend/config/config.local.php`.
+
+> `start.php` is for **local development**. On a real server, use Apache/Nginx with `frontend/` as the document root (see [backend/README.md](backend/README.md#security-notes)).
+
+## Manual setup (alternative)
 
 ```bash
 # 1. Database (MySQL 8 / MariaDB 10.6+)

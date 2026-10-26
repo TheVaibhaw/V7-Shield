@@ -3,6 +3,8 @@
 .env.*
 *.local.php
 backend/config/*.local.php
+backend/config/*.local.php.bak
+*.bak
 
 # OS / editor
 .DS_Store
