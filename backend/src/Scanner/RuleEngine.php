@@ -73,8 +73,8 @@ final class RuleEngine
         $excerpt = (string) preg_replace('~[^\x20-\x7E]~', '?', $excerpt);
         $excerpt = (string) preg_replace('~([A-Za-z0-9+/=\\\\]{24})[A-Za-z0-9+/=\\\\]{16,}~', '$1…', $excerpt);
         $excerpt = trim($excerpt);
-        if (mb_strlen($excerpt) > $len) {
-            $excerpt = mb_substr($excerpt, 0, $len) . '…';
+        if (\V7Shield\Text::length($excerpt) > $len) {
+            $excerpt = \V7Shield\Text::cut($excerpt, $len) . '…';
         }
         return ($start > 0 ? '…' : '') . $excerpt;
     }

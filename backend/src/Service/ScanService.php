@@ -167,7 +167,7 @@ final class ScanService
             $out['category'] = $f['category'];
         }
         if (isset($f['q']) && is_string($f['q']) && trim($f['q']) !== '') {
-            $out['q'] = mb_substr(trim($f['q']), 0, 100);
+            $out['q'] = \V7Shield\Text::cut(trim($f['q']), 100);
         }
         return $out;
     }

@@ -135,7 +135,7 @@ check('every finding is classified "suspicious"', array_unique(array_column($sin
 check('every finding has rule id, severity, confidence and sha256', array_reduce($sink->findings, fn($ok, $f) => $ok && $f['rule_id'] && isset(Scanner::SEVERITY_RANK[$f['severity']]) && $f['confidence'] > 0 && strlen($f['file_sha256']) === 64, true));
 check('line number reported (cache.php line 3)', ($sink->findings[array_search('uploads/2026/cache.php', array_column($sink->findings, 'file_path'))]['line'] ?? 0) === 3);
 $packed = array_values(array_filter($sink->findings, fn($f) => $f['file_path'] === 'packed.php'))[0]['evidence'] ?? '';
-check('evidence is truncated (no full payload stored)', mb_strlen($packed) <= 170 && !str_contains($packed, str_repeat('QUJD', 20)), "len=" . mb_strlen($packed));
+check('evidence is truncated (no full payload stored)', V7Shield\Text::length($packed) <= 170 && !str_contains($packed, str_repeat('QUJD', 20)), "len=" . V7Shield\Text::length($packed));
 
 check('excluded directory is skipped', ($sink->skips['node_modules/'] ?? '') === 'excluded');
 check('excluded glob is skipped', ($sink->skips['debug.log'] ?? '') === 'excluded');

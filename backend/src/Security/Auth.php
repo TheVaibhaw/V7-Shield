@@ -120,7 +120,7 @@ final class Auth
         if ($new !== $confirm) {
             return 'The new passwords do not match.';
         }
-        if (mb_strlen($new) < self::MIN_PASSWORD_LENGTH) {
+        if (\V7Shield\Text::length($new) < self::MIN_PASSWORD_LENGTH) {
             return 'Use at least ' . self::MIN_PASSWORD_LENGTH . ' characters.';
         }
         if (hash_equals($current, $new)) {

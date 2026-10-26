@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::valid(str_param($_POST, 'csrf'))) {
         $error = 'Your session expired. Please try again.';
     } else {
-        $username = mb_substr(trim((string) ($_POST['username'] ?? '')), 0, 64);
+        $username = V7Shield\Text::cut(trim((string) ($_POST['username'] ?? '')), 64);
         $password = (string) ($_POST['password'] ?? '');
         $error = $auth->attempt($username, $password);
         if ($error === null) {

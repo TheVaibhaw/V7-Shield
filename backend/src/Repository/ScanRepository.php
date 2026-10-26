@@ -6,7 +6,6 @@ namespace V7Shield\Repository;
 use PDO;
 use V7Shield\Scanner\Scanner;
 
-/** All SQL for scan jobs, findings and skipped files. Prepared statements only. */
 final class ScanRepository
 {
     public function __construct(private readonly PDO $pdo)
@@ -26,7 +25,6 @@ final class ScanRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** Atomically move a queued job to running. Returns false if another process claimed it. */
     public function claim(int $id): bool
     {
         $st = $this->pdo->prepare("UPDATE scan_jobs SET status = 'running', started_at = UTC_TIMESTAMP(), heartbeat_at = UTC_TIMESTAMP()
@@ -57,10 +55,9 @@ final class ScanRepository
             medium_count   = (SELECT COUNT(*) FROM scan_findings WHERE scan_id = j.id AND severity = 'medium'),
             low_count      = (SELECT COUNT(*) FROM scan_findings WHERE scan_id = j.id AND severity = 'low')
             WHERE id = ? AND status = 'running'");
-        $st->execute([$status, $s['limit_reached'] ?? null, $error === null ? null : mb_substr($error, 0, 500), $id]);
+        $st->execute([$status, $s['limit_reached'] ?? null, $error === null ? null : \V7Shield\Text::cut($error, 500), $id]);
     }
 
-    /** Insert findings in one transaction. */
     public function insertFindings(int $scanId, array $findings): void
     {
         if (!$findings) {
@@ -74,9 +71,9 @@ final class ScanRepository
             foreach ($findings as $f) {
                 $st->execute([
                     $scanId, $f['rule_id'], $f['rule_name'], $f['category'], $f['severity'], Scanner::SEVERITY_RANK[$f['severity']],
-                    $f['confidence'], 'suspicious', mb_substr($f['file_path'], 0, 1024), $f['file_size'], $f['file_sha256'],
-                    $f['line'], $f['match_count'], mb_substr($f['evidence'], 0, 500), mb_substr($f['description'], 0, 500),
-                    mb_substr($f['false_positives'], 0, 500),
+                    $f['confidence'], 'suspicious', \V7Shield\Text::cut($f['file_path'], 1024), $f['file_size'], $f['file_sha256'],
+                    $f['line'], $f['match_count'], \V7Shield\Text::cut($f['evidence'], 500), \V7Shield\Text::cut($f['description'], 500),
+                    \V7Shield\Text::cut($f['false_positives'], 500),
                 ]);
             }
             $this->pdo->commit();
@@ -95,7 +92,7 @@ final class ScanRepository
         $this->pdo->beginTransaction();
         try {
             foreach ($skips as [$path, $reason, $detail]) {
-                $st->execute([$scanId, mb_substr($path, 0, 1024), $reason, mb_substr($detail, 0, 255)]);
+                $st->execute([$scanId, \V7Shield\Text::cut($path, 1024), $reason, \V7Shield\Text::cut($detail, 255)]);
             }
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -125,7 +122,6 @@ final class ScanRepository
         return (int) $st->fetchColumn();
     }
 
-    /** Mark running jobs without a recent heartbeat as failed (crashed worker / killed request). */
     public function failStale(int $seconds): int
     {
         $st = $this->pdo->prepare("UPDATE scan_jobs SET status = 'failed', finished_at = UTC_TIMESTAMP(),
