@@ -26,7 +26,7 @@ if (!is_file($backendBootstrap)) {
 require $backendBootstrap;
 
 $v7 = V7Shield\config();
-$auth = new V7Shield\Security\Auth($v7);
+$auth = new V7Shield\Security\Auth($v7, static fn() => V7Shield\Database::connect($v7));
 $auth->startSession();
 
 set_exception_handler(static function (Throwable $e): void {
@@ -42,5 +42,13 @@ if (!defined('V7_PUBLIC') && $auth->user() === null) {
         json_response(['error' => 'Authentication required.'], 401);
     }
     header('Location: ' . url('login.php'));
+    exit;
+}
+
+if (!defined('V7_PUBLIC') && !defined('V7_PASSWORD_PAGE') && $auth->mustChangePassword()) {
+    if (defined('V7_API')) {
+        json_response(['error' => 'Password change required.'], 403);
+    }
+    header('Location: ' . url('change-password.php'));
     exit;
 }

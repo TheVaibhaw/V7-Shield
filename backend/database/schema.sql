@@ -69,3 +69,22 @@ CREATE TABLE IF NOT EXISTS scan_skips (
     KEY idx_skips_scan_reason (scan_id, reason),
     CONSTRAINT fk_skips_scan FOREIGN KEY (scan_id) REFERENCES scan_jobs (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Console users. Passwords are password_hash() values (bcrypt).
+CREATE TABLE IF NOT EXISTS users (
+    id                   INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    username             VARCHAR(64)   NOT NULL,
+    password_hash        VARCHAR(255)  NOT NULL,
+    must_change_password TINYINT(1)    NOT NULL DEFAULT 0,
+    created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_login_at        DATETIME      NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Default administrator: admin / Admin@12345
+-- The password MUST be changed at first login (must_change_password = 1).
+-- INSERT IGNORE keeps an existing admin untouched when the schema is re-run.
+INSERT IGNORE INTO users (username, password_hash, must_change_password)
+VALUES ('admin', '$2y$10$bGxqFhkJ6TQ6IiEX2UJwjOxR4OHgC/ZjK3qBUDt5tj8UzcHC04mlq', 1);
