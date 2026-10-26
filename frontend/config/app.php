@@ -5,7 +5,7 @@ return [
     'name'      => 'V7-Shield',
     'tagline'   => 'Scan. Detect. Protect.',
     'version'   => '0.2.0-mvp',
-    'repo_url'  => 'https://github.com/',
+    'repo_url'  => 'https://github.com/TheVaibhaw/V7-Shield',
     'backend_path' => dirname(__DIR__, 2) . '/backend',
 
     'nav' => [
