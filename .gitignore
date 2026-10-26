@@ -1,0 +1,19 @@
+# Environment & secrets
+.env
+.env.*
+*.local.php
+backend/config/*.local.php
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Dependencies & generated output
+/vendor/
+backend/vendor/
+node_modules/
+*.log
+/storage/
+/reports/

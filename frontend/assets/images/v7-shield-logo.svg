@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="V7-Shield logo">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5ef0ff"/><stop offset="1" stop-color="#2f7bff"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3 L56 11 V30 C56 45 46 55 32 61 C18 55 8 45 8 30 V11 Z" fill="#0b1426" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 9 L50 15 V30 C50 41.5 43 49.5 32 54.5 C21 49.5 14 41.5 14 30 V15 Z" fill="url(#g)" opacity=".12"/>
+  <path d="M17 20 L25.5 42 L32 25" fill="none" stroke="url(#g)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33.5 20 H47 L37.5 44" fill="none" stroke="#e8fbff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 31 H44" stroke="#5ef0ff" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

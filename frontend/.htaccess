@@ -1,0 +1,14 @@
+# V7-Shield admin panel (Apache)
+DirectoryIndex index.php
+Options -Indexes
+
+# Internal folders are included by PHP only; never served directly.
+RedirectMatch 404 ^/(.*/)?(config|data|includes)/
+<FilesMatch "^(README\.md|\.htaccess)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "same-origin"
+</IfModule>
