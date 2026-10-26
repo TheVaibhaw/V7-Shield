@@ -164,9 +164,9 @@ check('max_files limit stops the scan and is reported', (function () use ($rules
 
 check('regex limit on one rule is reported, not fatal', (function () use ($rulesCfg, $limits, $tmp) {
     mkdir("$tmp/redos");
-    file_put_contents("$tmp/redos/x.php", '<' . '?php ' . str_repeat('a', 5000));
+    file_put_contents("$tmp/redos/x.php", '<' . "?php\n" . str_repeat('a', 5000) . 'b');
     $cfg = $rulesCfg;
-    $cfg['rules'][] = ['id' => 'T-REDOS', 'name' => 't', 'category' => 'execution', 'severity' => 'low', 'confidence' => 1, 'pattern' => '~(a+)+b~'];
+    $cfg['rules'][] = ['id' => 'T-REDOS', 'name' => 't', 'category' => 'execution', 'severity' => 'low', 'confidence' => 1, 'pattern' => '~^(a|aa)+$~m'];
     $oldLimit = ini_set('pcre.backtrack_limit', '1000');
     $oldJit = ini_set('pcre.jit', '0');
     $s = new MemorySink();

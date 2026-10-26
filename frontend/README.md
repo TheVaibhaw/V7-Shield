@@ -1,79 +1,55 @@
-# V7-Shield — Admin Panel (frontend)
+# V7-Shield — Admin dashboard (frontend)
 
-**Scan. Detect. Protect.** — the Core PHP admin console for V7-Shield, an open-source security scanner for WordPress, Joomla, custom PHP applications, website files and supported databases.
+Core PHP dashboard for the V7-Shield scanner. It renders real, persisted scan data from the backend library (`../backend`, included server-side). There's no framework and no build step.
 
-> **Demo Mode.** This phase is frontend only. All statistics, findings and scans are sample data from `data/demo-data.php`. No file is read, scanned, quarantined or deleted.
+## MVP features
 
-## Requirements
-- PHP **8.2+** (no extensions beyond the defaults)
-- A browser with internet access for the CDN assets (Bootstrap Icons, Chart.js, Inter font)
-- No Node.js, Composer or build step
+| Page | File | What it does |
+|---|---|---|
+| Dashboard | `dashboard.php` | Latest completed scan (counts, severity chart, categories), active/failed scans, recent scans. Shows empty states and setup hints when there's no data. |
+| Start Malware Scan | `pages/scans.php` | Pick a **configured target id** and start a scan. Shows the limits and exclusions in effect. |
+| Scan details | `pages/scan.php?id=N` | Live status (queued/running/completed/failed), real counts polled from the API, severity breakdown, skipped files. |
+| Malware Findings | `pages/findings.php` | Findings for a scan, with severity/category/search filters, server-side paging and a detail drawer (evidence, SHA-256, false-positive notes). |
+| Scan History | `pages/scan-history.php` | All scans, filterable by status. |
+| Settings | `pages/settings.php` | Theme and sidebar (stored in the browser), system status, targets (labels only, never paths), limits, rule list. Scanner settings are read-only here. |
 
-## Run locally
-From the repository root:
+Also: `login.php`, `logout.php` (POST + CSRF), and `api.php` (JSON endpoints; see `backend/README.md`).
+
+The sidebar lists planned features under **Coming soon** without links. Their earlier mock-ups are kept, unserved, in `../design/future-pages/`.
+
+## Requirements and running
+
+See the root [README](../README.md) for database and config setup. Then:
 
 ```bash
-php -S localhost:8000 -t frontend
+PHP_CLI_SERVER_WORKERS=4 php -S localhost:8000 -t frontend
 ```
 
-Then open <http://localhost:8000/>. It redirects to `dashboard.php`.
+`PHP_CLI_SERVER_WORKERS` matters in inline execution mode: the request that runs the scan holds one worker while the page polls status on another.
 
-**Apache:** point a virtual host or sub-folder at `frontend/`. URLs are detected from the script path, so sub-folders such as `/V7-Shield/frontend/` work too. `.htaccess` disables directory listing and blocks `config/`, `data/` and `includes/`. (Those files also exit when they are requested directly.)
+For Apache or Nginx, make `frontend/` the document root and keep `backend/` outside it. If the backend lives elsewhere, set `backend_path` in `config/app.php`.
 
 ## Structure
+
 ```
 frontend/
-├── index.php              → redirects to dashboard.php
-├── dashboard.php          → main overview
-├── pages/                 → one file per navigation item (23 pages)
-├── includes/
-│   ├── bootstrap.php      → config + helpers + demo data, security headers
-│   ├── helpers.php        → e(), layout, badges, cards, data_table(), column sets
-│   ├── header.php sidebar.php topbar.php breadcrumbs.php footer.php
-├── config/app.php         → app info + navigation / page allowlist
-├── data/demo-data.php     → ALL sample data (single source)
-└── assets/
-    ├── css/style.css      → design tokens (dark/light), shell, components
-    ├── css/dashboard.css  → dashboard and page components
-    ├── css/responsive.css → breakpoints 1440/1200/1024/768/480/360
-    ├── js/app.js          → sidebar/drawer, theme, dropdowns, tables, drawer, modals, toasts, validation, export
-    ├── js/charts.js       → Chart.js helpers (re-theme on toggle)
-    ├── js/dashboard.js    → threat activity chart and period filter
-    ├── js/scans.js        → scan wizard summary + UI-only progress simulation
-    └── images/v7-shield-logo.svg
+├── index.php, dashboard.php, login.php, logout.php, api.php
+├── pages/            scans, scan, findings, scan-history, settings
+├── includes/         bootstrap (auth gate), helpers, header/sidebar/topbar/footer
+├── config/app.php    navigation = page allowlist, backend_path
+└── assets/           css (tokens, components, responsive), js (app, charts, scans), logo
 ```
 
-## How the pages work
-- Each page calls `render_header('<key>')` and `render_footer()`. The key must exist in `config/app.php` `nav`, which also drives the sidebar and breadcrumbs. No user-supplied path is ever included.
-- Tables use `data_table()`. `app.js` adds search, filters, sorting and pagination, and the `?severity=critical`-style query parameters preset the filters.
-- Buttons that need a backend show a "Demo Mode" toast. Destructive actions use a confirmation dialog and only change the current view.
-- Exports (CSV/JSON) are built in the browser from the visible sample rows and labelled as demo.
+## Conventions
 
-## Current limitations
-- No authentication, persistence or real scanning.
-- Settings are not saved. Only the theme, sidebar state, nav groups and project selector are kept in `localStorage`.
-- PDF reports use the browser's print function.
-- CDN assets are needed. For offline use, copy them into `assets/vendor/` and update `includes/header.php` / `footer.php`.
+- Every page includes `includes/bootstrap.php`. It redirects to login (or returns 401 for the API) unless a session exists.
+- Pages render only if their key is in `config/app.php` (`nav` or `hidden`). No user-supplied path is ever included.
+- Dynamic output goes through `e()`. Forms carry `csrf_field()`, and API POSTs send `X-CSRF-Token`.
+- Backend calls go through `try_backend()`, which turns failures into a safe message (for example "Database is unavailable") instead of a stack trace.
+- Timestamps are stored in UTC and shown in the viewer's local time.
 
-## Backend integration plan
-The planned `backend/` (not present yet) should expose a JSON API (`config/app.php` → `api_base`). The proposed endpoints are:
+## Limitations
 
-| Frontend data (`data/demo-data.php`) | Proposed endpoint |
-|---|---|
-| `score`, `metrics` | `GET /api/dashboard/summary` |
-| `series` | `GET /api/findings/timeseries?range=7d` |
-| `scans` | `GET /api/scans`, `POST /api/scans`, `POST /api/scans/{id}/cancel`, `GET /api/scans/{id}/progress` |
-| `findings` | `GET /api/findings`, `PATCH /api/findings/{id}` (review state) |
-| `integrity` | `GET /api/integrity`, `POST /api/integrity/baseline` |
-| `quarantine` | `GET /api/quarantine`, `POST /api/quarantine/{id}/restore` (audited) |
-| `events`, activity logs | `GET /api/events`, `GET /api/audit` |
-| `projects` | CRUD `/api/projects` |
-| `notifications` | `GET /api/notifications`, `POST /api/notifications/read` |
-
-Swap each demo array for an API client call inside `data/`, keeping the same array shapes so the templates stay unchanged. Add CSRF tokens and session authentication when the forms start posting. Database credentials and secrets must stay in backend configuration only.
-
-## Contributing
-- Keep the code framework-free (Core PHP and vanilla JS).
-- Escape output with `e()`.
-- Register new pages in `config/app.php`.
-- Run `find frontend -name '*.php' -exec php -l {} \;` before committing.
+- One administrator role. There's no user management UI; users are added in the backend config.
+- No quarantine, file integrity baselines, scheduling, CMS-specific checks, reports or notifications yet.
+- Icons, Chart.js and fonts load from public CDNs.

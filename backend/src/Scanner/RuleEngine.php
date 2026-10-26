@@ -31,15 +31,19 @@ final class RuleEngine
     }
 
     /**
+     * @param list<string> $failed receives IDs of rules that could not be evaluated
      * @return list<array{rule:array,line:int,evidence:string,match_count:int}>
      */
-    public function match(string $content): array
+    public function match(string $content, array &$failed = []): array
     {
         $out = [];
+        $failed = [];
         foreach ($this->rules as $rule) {
             $n = @preg_match_all($rule['pattern'], $content, $m, PREG_OFFSET_CAPTURE);
             if ($n === false) {
-                throw new ScanException('Rule ' . $rule['id'] . ' could not be evaluated (regex limit reached).');
+                // Backtrack/JIT limit on pathological input: report it instead of silently passing.
+                $failed[] = $rule['id'];
+                continue;
             }
             if ($n > 0) {
                 $offset = $m[0][0][1];
