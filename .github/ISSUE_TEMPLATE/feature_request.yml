@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an idea or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Project principles
+      options:
+        - label: This keeps the scanner read-only (it never modifies scanned files).
+          required: true
+        - label: It works in Core PHP without frameworks or build tools.
+          required: true
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to implement it?
+      options: ["Yes, I'd like to open a PR", "Maybe, with guidance", "No"]

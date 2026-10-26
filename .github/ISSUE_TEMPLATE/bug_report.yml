@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Security vulnerabilities must be reported privately**; see SECURITY.md.
+        Please remove passwords, server paths and other private data from logs before posting.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `php start.php`
+        2. Open Start Malware Scan
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: V7-Shield version or commit
+      placeholder: v0.2.0 or a1b2c3d
+    validations:
+      required: true
+  - type: dropdown
+    id: php
+    attributes:
+      label: PHP version
+      options: ["8.1", "8.2", "8.3", "8.4", "8.5", "Other"]
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Database, OS and web server
+      placeholder: MySQL 8.0, Ubuntu 24.04, php start.php
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or logs
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (for UI issues)

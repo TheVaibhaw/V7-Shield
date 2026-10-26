@@ -1,0 +1,42 @@
+name: Detection rule
+description: Propose a new rule or improve an existing one
+labels: ["detection-rule", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste working malware.** Describe the pattern, or paste a defanged excerpt
+        (for example `ev`+`al(...)`), and remove domains, keys and IPs.
+  - type: textarea
+    id: pattern
+    attributes:
+      label: What should be detected?
+      description: The technique or code pattern, and where it appears (e.g. WordPress uploads).
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Defanged example
+      render: php
+  - type: textarea
+    id: regex
+    attributes:
+      label: Suggested pattern (optional)
+      description: PCRE with the "~" delimiter and bounded quantifiers.
+      render: text
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Suggested severity
+      options: ["critical", "high", "medium", "low"]
+  - type: textarea
+    id: fp
+    attributes:
+      label: Known false positives
+      description: Legitimate code that could also match.
+  - type: textarea
+    id: refs
+    attributes:
+      label: References
+      description: Write-ups, CVEs or public reports.

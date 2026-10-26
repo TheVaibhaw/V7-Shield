@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/TheVaibhaw/V7-Shield/security/advisories/new
+    about: Please report vulnerabilities privately, never in a public issue.
+  - name: Questions and ideas
+    url: https://github.com/TheVaibhaw/V7-Shield/discussions
+    about: Ask questions or share ideas in Discussions.
