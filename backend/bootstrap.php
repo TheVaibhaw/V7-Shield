@@ -1,13 +1,10 @@
 <?php
-/**
- * V7-Shield backend bootstrap. Include this file from CLI scripts or the
- * frontend. The backend directory must NOT be inside the public web root.
- */
 declare(strict_types=1);
 
 namespace V7Shield;
 
 const BACKEND_ROOT = __DIR__;
+date_default_timezone_set('UTC');
 
 spl_autoload_register(static function (string $class): void {
     $prefix = __NAMESPACE__ . '\\';
@@ -20,7 +17,6 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
-/** Load and cache the merged configuration. */
 function config(): Config
 {
     static $config = null;

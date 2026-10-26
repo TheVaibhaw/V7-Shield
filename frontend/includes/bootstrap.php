@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
 
+date_default_timezone_set('UTC');
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
