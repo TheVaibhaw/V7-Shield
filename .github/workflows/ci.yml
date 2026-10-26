@@ -15,7 +15,7 @@ concurrency:
 jobs:
   lint:
     name: Lint (PHP ${{ matrix.php }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +39,7 @@ jobs:
 
   test:
     name: Tests (PHP ${{ matrix.php }}${{ matrix.no-mbstring && ', no mbstring' || '' }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -76,7 +76,7 @@ jobs:
 
   e2e:
     name: End-to-end HTTP
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8.0
