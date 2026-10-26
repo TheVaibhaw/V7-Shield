@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $username = V7Shield\Text::cut(trim((string) ($_POST['username'] ?? '')), 64);
         $password = (string) ($_POST['password'] ?? '');
-        $error = $auth->attempt($username, $password);
+        $error = $auth->attempt($username, $password, $_SERVER['REMOTE_ADDR'] ?? null);
         if ($error === null) {
             header('Location: ' . url('dashboard.php'));
             exit;
@@ -33,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in · <?= e($config['name']) ?></title>
 <link rel="icon" type="image/svg+xml" href="<?= e(asset('images/v7-shield-logo.svg')) ?>">
-<script>try{var t=localStorage.getItem('v7-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script src="<?= e(asset('js/theme-init.js')) ?>"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>">
 </head>
 <body>
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <img src="<?= e(asset('images/v7-shield-logo.svg')) ?>" alt="" width="44" height="44">
       <span class="brand-text"><strong>V7<span>-Shield</span></strong><small><?= e($config['tagline']) ?></small></span>
     </div>
-    <?php if (!$auth->hasUsers()): ?>
+    <?php if (V7Shield\Security\Auth::isLoopback($_SERVER['REMOTE_ADDR'] ?? null) && !$auth->hasUsers()): ?>
       <?= notice('danger', '<strong>No users configured.</strong> Add a user to <code>backend/config/config.local.php</code> — see the README (<code>php backend/bin/hash-password.php</code>).', 'person-x') ?>
     <?php endif; ?>
     <?php if ($error): ?><?= notice('danger', e($error), 'exclamation-octagon') ?><?php endif; ?>

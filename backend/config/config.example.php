@@ -32,11 +32,13 @@ return [
         'execution'          => 'inline',
         'max_starts_per_hour' => 10,
         'stale_after'        => 900,
+        'queued_timeout'      => 3600,           // worker mode: queued jobs older than this are marked failed
     ],
 
     'security' => [
         'session_name'      => 'v7shield_sid',
-        'session_lifetime'  => 3600,
+        'session_lifetime'  => 3600,               // seconds of inactivity before sign-out
+        'session_max_age'   => 28800,              // absolute session lifetime (8 h)
         'max_login_attempts' => 5,
     ],
 ];

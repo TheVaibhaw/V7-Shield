@@ -13,6 +13,28 @@ code() { curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" "$@"; }
 json() { php -r '$d=json_decode(stream_get_contents(STDIN),true); $k=explode(".",$argv[1]); foreach($k as $p){$d=is_array($d)?($d[$p]??null):null;} echo is_scalar($d)?$d:json_encode($d);' "$1"; }
 csrf_from() { grep -o 'name="csrf" value="[a-f0-9]*"' | head -1 | sed 's/.*value="//; s/"//'; }
 
+echo "Router and headers (requires backend/dev-router.php, as used by start.php)"
+for p in README.md .htaccess includes/helpers.php config/app.php "pages/../includes/helpers.php" "%2e%2e/backend/config/config.example.php"; do
+  expect "internal file /$p is not served" "$(code "$BASE/$p")" 404
+done
+expect "static asset served" "$(code "$BASE/assets/css/style.css")" 200
+expect "vendored icon font served" "$(code "$BASE/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2")" 200
+H=$(curl -s -D - -o /dev/null "$BASE/login.php")
+echo "$H" | grep -qi "^content-security-policy: default-src 'self'" && ok "CSP header present" || bad "CSP header present" "missing"
+echo "$H" | grep -qi "^x-frame-options: DENY" && ok "X-Frame-Options DENY" || bad "X-Frame-Options" "missing"
+echo "$H" | grep -qi "httponly" && echo "$H" | grep -qi "samesite=strict" && ok "session cookie HttpOnly + SameSite=Strict" || bad "cookie flags" "-"
+
+echo "Brute-force throttling (fresh session per attempt, so the lock is server-side)"
+FAKE="nobody-$RANDOM$RANDOM"
+for i in 1 2 3 4 5; do
+  J2=$(mktemp); T2=$(curl -s -c "$J2" -b "$J2" "$BASE/login.php" | csrf_from)
+  curl -s -o /dev/null -c "$J2" -b "$J2" -X POST --data-urlencode "csrf=$T2" -d "username=$FAKE&password=wrong$i" "$BASE/login.php"; rm -f "$J2"
+done
+J2=$(mktemp); T2=$(curl -s -c "$J2" -b "$J2" "$BASE/login.php" | csrf_from)
+curl -s -c "$J2" -b "$J2" -X POST --data-urlencode "csrf=$T2" -d "username=$FAKE&password=x" "$BASE/login.php" | grep -q "Too many failed attempts" \
+  && ok "6th attempt is throttled even with a new session" || bad "throttling" "not throttled"
+rm -f "$J2"
+
 echo "Authentication"
 expect "API without session returns 401" "$(code "$BASE/api.php?action=summary")" 401
 expect "page without session redirects" "$(code "$BASE/pages/findings.php")" 302

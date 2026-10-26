@@ -86,24 +86,32 @@
     });
   }
 
+  let modalReturn = null;
   function openModal(id) {
     const m = document.getElementById(id);
     if (!m) return;
+    modalReturn = document.activeElement;
     m.hidden = false;
     const f = m.querySelector("input, select, textarea, button");
     f && f.focus();
+  }
+  function closeModal(m) {
+    if (!m || m.hidden) return;
+    m.hidden = true;
+    modalReturn && modalReturn.focus && modalReturn.focus();
+    modalReturn = null;
   }
   document.addEventListener("click", (e) => {
     const opener = e.target.closest("[data-modal-open]");
     if (opener) openModal(opener.dataset.modalOpen);
     const closer = e.target.closest("[data-modal-close]");
-    if (closer) closer.closest(".modal").hidden = true;
+    if (closer) closeModal(closer.closest(".modal"));
     if (
       e.target.classList &&
       e.target.classList.contains("modal") &&
       e.target.id !== "confirm-modal"
     )
-      e.target.hidden = true;
+      closeModal(e.target);
   });
 
   function setTheme(t) {
@@ -190,59 +198,41 @@
       closeDetail();
       if (sidebar && sidebar.classList.contains("open")) drawer(false);
       $$(".modal:not([hidden])").forEach((m) => {
-        if (m.id !== "confirm-modal") m.hidden = true;
+        if (m.id !== "confirm-modal") closeModal(m);
       });
     }
+    // "/" focuses the page's search box, if there is one.
+    const active = document.activeElement;
     if (
       e.key === "/" &&
-      !/input|textarea|select/i.test(document.activeElement.tagName)
+      !(active && (/input|textarea|select/i.test(active.tagName) || active.isContentEditable))
     ) {
-      e.preventDefault();
-      const s =
-        $("#global-search") ||
-        $("[data-table-search]") ||
-        $('input[type="search"]');
-      const box = $(".tb-search");
-      box && box.classList.add("open");
-      s && s.focus();
+      const s = $('input[type="search"]');
+      if (s) {
+        e.preventDefault();
+        s.focus();
+      }
     }
   });
 
-  const gForm = $("[data-global-search]");
-  if (gForm) {
-    gForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const q = $("#global-search").value.trim().toLowerCase();
-      if (!q) return;
-      const opts = $$("#nav-pages option");
-      const hit =
-        opts.find((o) => o.value.toLowerCase() === q) ||
-        opts.find((o) => o.value.toLowerCase().includes(q));
-      if (hit) window.location.href = hit.dataset.url;
-      else {
-        const ts = $("[data-table-search]");
-        if (ts) {
-          ts.value = q;
-          ts.dispatchEvent(new Event("input"));
-          ts.scrollIntoView({ behavior: "smooth", block: "center" });
-          toast(`Filtering this page for “${q}”.`, "info");
-        } else toast(`No page matches “${q}”.`, "warning");
-      }
+  $$("select[data-autosubmit]").forEach((sel) =>
+    sel.addEventListener("change", () => sel.form && sel.form.submit()),
+  );
+
+  $$("[data-theme-choice]").forEach((r) => {
+    r.checked = r.value === (document.documentElement.dataset.theme || "dark");
+    r.addEventListener("change", () => {
+      if (r.checked) setTheme(r.value);
     });
-    $("#global-search").addEventListener("change", (e) => {
-      const hit = $$("#nav-pages option").find(
-        (o) => o.value === e.target.value,
-      );
-      if (hit) window.location.href = hit.dataset.url;
+  });
+  const compact = $("[data-compact-choice]");
+  if (compact) {
+    compact.checked = document.documentElement.classList.contains("sb-collapsed");
+    compact.addEventListener("change", () => {
+      document.documentElement.classList.toggle("sb-collapsed", compact.checked);
+      store.set("v7-sidebar", compact.checked ? "collapsed" : "open");
     });
   }
-  $$("[data-search-toggle]").forEach((b) =>
-    b.addEventListener("click", () => {
-      const f = $(".tb-search");
-      f.classList.toggle("open");
-      if (f.classList.contains("open")) $("#global-search").focus();
-    }),
-  );
 
   function initTable(table) {
     const tools = document.querySelector(`[data-table-for="${table.id}"]`);
@@ -273,8 +263,12 @@
       });
       if (state.sortIdx >= 0) {
         list.sort((a, b) => {
-          const av = a.cells[state.sortIdx].dataset.value;
-          const bv = b.cells[state.sortIdx].dataset.value;
+          const cellValue = (row) => {
+            const c = row.cells[state.sortIdx];
+            return (c ? (c.dataset.value ?? c.textContent) : "").trim();
+          };
+          const av = cellValue(a);
+          const bv = cellValue(b);
           const an = parseFloat(av.replace(/[,%]/g, ""));
           const bn = parseFloat(bv.replace(/[,%]/g, ""));
           const cmp =

@@ -56,7 +56,7 @@ final class Scanner
                 break;
             }
 
-            $result = $this->scanFile($entry['abs'], $entry['path'], $maxSize, $perFile);
+            $result = $this->scanFile($entry['abs'], $entry['path'], $maxSize, $perFile, $walker->root());
             if (isset($result['skip'])) {
                 $stats['files_skipped']++;
                 if ($result['skip'][0] !== 'oversized' && $result['skip'][0] !== 'empty') {
@@ -89,26 +89,45 @@ final class Scanner
     }
 
     /** @return array{size:int,findings:list<array>,partial:?string}|array{skip:array{0:string,1:string}} */
-    public function scanFile(string $abs, string $rel, int $maxSize, int $perFile = 20): array
+    public function scanFile(string $abs, string $rel, int $maxSize, int $perFile = 20, ?string $root = null): array
     {
         clearstatcache(true, $abs);
-        $size = @filesize($abs);
-        if ($size === false) {
-            return ['skip' => ['stat_error', 'File size could not be read.']];
+        $lst = @lstat($abs);
+        if ($lst === false) {
+            return ['skip' => ['stat_error', 'File could not be inspected.']];
         }
+        if (is_link($abs)) {
+            return ['skip' => ['symlink', 'Symbolic links are never followed.']];
+        }
+        $size = (int) $lst['size'];
         if ($size > $maxSize) {
             return ['skip' => ['oversized', sprintf('File is %s; limit is %s.', self::bytes($size), self::bytes($maxSize))]];
         }
         if ($size === 0) {
             return ['skip' => ['empty', 'Empty file.']];
         }
-        if (!is_readable($abs)) {
+        $h = @fopen($abs, 'rb');
+        if ($h === false) {
             return ['skip' => ['unreadable', 'File is not readable by the scanner user.']];
         }
-        $content = @file_get_contents($abs, false, null, 0, $maxSize + 1);
+        try {
+            $st = fstat($h);
+            $real = realpath($abs);
+            if ($st === false || $st['ino'] !== $lst['ino'] || $st['dev'] !== $lst['dev']
+                || ($root !== null && ($real === false || !str_starts_with($real, $root . '/')))) {
+                return ['skip' => ['changed', 'File changed or moved during the scan; not read.']];
+            }
+            if ($st['size'] > $maxSize) {
+                return ['skip' => ['oversized', sprintf('File is %s; limit is %s.', self::bytes((int) $st['size']), self::bytes($maxSize))]];
+            }
+            $content = stream_get_contents($h, $maxSize);
+        } finally {
+            fclose($h);
+        }
         if ($content === false) {
             return ['skip' => ['read_error', 'File could not be read.']];
         }
+        $size = strlen($content);
 
         $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
         $head = substr($content, 0, 64);

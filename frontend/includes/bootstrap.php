@@ -1,8 +1,4 @@
 <?php
-/**
- * Shared bootstrap: config, helpers, backend library, session and auth.
- * Define V7_PUBLIC before including to allow unauthenticated access (login page).
- */
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
@@ -14,6 +10,11 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    . "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; "
+    . "base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+header('Cross-Origin-Opener-Policy: same-origin');
 
 $config = require APP_ROOT . '/config/app.php';
 require APP_ROOT . '/includes/helpers.php';
@@ -28,6 +29,7 @@ require $backendBootstrap;
 $v7 = V7Shield\config();
 $auth = new V7Shield\Security\Auth($v7, static fn() => V7Shield\Database::connect($v7));
 $auth->startSession();
+$auth->verifySession();
 
 set_exception_handler(static function (Throwable $e): void {
     error_log('[V7-Shield] ' . $e->getMessage());

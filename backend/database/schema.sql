@@ -88,3 +88,15 @@ CREATE TABLE IF NOT EXISTS users (
 -- INSERT IGNORE keeps an existing admin untouched when the schema is re-run.
 INSERT IGNORE INTO users (username, password_hash, must_change_password)
 VALUES ('admin', '$2y$10$bGxqFhkJ6TQ6IiEX2UJwjOxR4OHgC/ZjK3qBUDt5tj8UzcHC04mlq', 1);
+
+-- Failed sign-ins, used for server-side brute-force throttling.
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username     VARCHAR(64)     NOT NULL,
+    ip           VARCHAR(45)     NOT NULL,
+    attempted_at DATETIME        NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_attempts_time (attempted_at),
+    KEY idx_attempts_user (username, attempted_at),
+    KEY idx_attempts_ip (ip, attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

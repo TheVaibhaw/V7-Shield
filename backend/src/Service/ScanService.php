@@ -41,10 +41,17 @@ final class ScanService
         return ['id' => $targetId, 'label' => (string) ($targets[$targetId]['label'] ?? $targetId), 'path' => $real];
     }
 
+    public function failStale(): int
+    {
+        $running = (int) $this->config->get('jobs.stale_after', 900);
+        $queued = $this->config->get('jobs.execution') === 'worker' ? (int) $this->config->get('jobs.queued_timeout', 3600) : $running;
+        return $this->repo->failStale($running, $queued);
+    }
+
     public function start(string $targetId, string $user, ?string $ip): int
     {
         $target = $this->resolveTarget($targetId);
-        $this->repo->failStale((int) $this->config->get('jobs.stale_after', 900));
+        $this->failStale();
         $pdo = $this->repo->pdo();
         $lock = 'v7shield_start_' . $targetId;
         if ((int) $pdo->query('SELECT GET_LOCK(' . $pdo->quote($lock) . ', 5)')->fetchColumn() !== 1) {
@@ -113,7 +120,7 @@ final class ScanService
         $this->repo->find($scanId) ?? throw new ServiceException('Scan not found.', 404);
         $filters = self::cleanFilters($filters);
         $total = $this->repo->countFindings($scanId, $filters);
-        $page = max(1, $page);
+        $page = min(max(1, $page), max(1, (int) ceil($total / $perPage)));
         return [
             'items' => array_map([self::class, 'publicFinding'], $this->repo->findings($scanId, $filters, $perPage, ($page - 1) * $perPage)),
             'total' => $total, 'page' => $page, 'pages' => max(1, (int) ceil($total / $perPage)), 'filters' => $filters,
@@ -132,10 +139,10 @@ final class ScanService
 
     public function history(int $page, ?string $status, int $perPage = 20): array
     {
-        $this->repo->failStale((int) $this->config->get('jobs.stale_after', 900));
+        $this->failStale();
         $status = in_array($status, self::STATUSES, true) ? $status : null;
         $total = $this->repo->countJobs($status);
-        $page = max(1, $page);
+        $page = min(max(1, $page), max(1, (int) ceil($total / $perPage)));
         return [
             'items' => array_map([self::class, 'publicJob'], $this->repo->history($perPage, ($page - 1) * $perPage, $status)),
             'total' => $total, 'page' => $page, 'pages' => max(1, (int) ceil($total / $perPage)), 'status' => $status,
@@ -144,7 +151,7 @@ final class ScanService
 
     public function summary(): array
     {
-        $this->repo->failStale((int) $this->config->get('jobs.stale_after', 900));
+        $this->failStale();
         $latest = $this->repo->latestCompleted();
         return [
             'targets' => count($this->config->get('targets', [])),

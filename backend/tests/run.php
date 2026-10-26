@@ -91,6 +91,7 @@ $files = [
     'deep/a/b/c/d/deep.php' => $o . $ev . '($_GET["x"]);',
     'empty.php' => '',
     'big.php' => $o . str_repeat('/* padding */', 20000),
+    "bad\xFFname.php" => $o . $ev . '($_GET["x"]);',
 ];
 foreach ($files as $p => $c) {
     file_put_contents("$root/$p", $c);
@@ -197,10 +198,11 @@ foreach (['../etc', '/etc', 'site/../../', 'site%00', '', 'unknown', str_repeat(
 }
 check('rejects target whose directory is missing', $rejects('gone'));
 
-// ---------------------------------------------------------------- database
 $dsn = getenv('V7SHIELD_TEST_DSN');
 if (!$dsn) {
     echo "Database tests skipped (set V7SHIELD_TEST_DSN / _USER / _PASS)\n";
+} elseif (!extension_loaded('pdo_mysql')) {
+    echo "Database tests skipped: the pdo_mysql extension is not installed for PHP " . PHP_VERSION . "\n";
 } elseif (!str_contains((string) $dsn, 'test')) {
     echo "Database tests refused: V7SHIELD_TEST_DSN must point to a database whose name contains 'test'.\n";
     $failed++;
@@ -236,7 +238,6 @@ if (!$dsn) {
     check('public findings contain only relative paths', !str_contains(json_encode($page), $tmp));
     check('history lists the job', $svc->history(1, null)['items'][0]['id'] === $id);
     check('summary uses the completed job', $svc->summary()['latest']['id'] === $id);
-    // One job already counts towards the limit of 3; create two more, then expect rejection.
     $rate = null;
     $created = 1;
     try {
@@ -254,6 +255,13 @@ if (!$dsn) {
     $pdo->exec("UPDATE scan_jobs SET status = 'running', started_at = UTC_TIMESTAMP() - INTERVAL 2 HOUR, heartbeat_at = UTC_TIMESTAMP() - INTERVAL 2 HOUR WHERE id = $stale");
     $svc->history(1, null);
     check('stale running job is marked failed', $svc->status($stale)['status'] === 'failed');
+    $q = $repo->createJob('site', 'Test', 'other', null, 'x', []);
+    $pdo->exec("UPDATE scan_jobs SET created_at = UTC_TIMESTAMP() - INTERVAL 2 HOUR WHERE id = $q");
+    $svc->history(1, null);
+    check('abandoned queued job is marked failed (target not blocked)', $svc->status($q)['status'] === 'failed');
+    $bad = $svc->findings($id, ['q' => 'name.php'], 1)['items'][0]['file_path'] ?? '';
+    check('file name with invalid UTF-8 is stored safely', $bad !== '' && preg_match('//u', $bad) === 1 && str_contains($bad, "\u{FFFD}"));
+    check('out-of-range page is clamped to the last page', $svc->history(999, null)['page'] === $svc->history(1, null)['pages']);
     $nf = null;
     try { $svc->status(999999); } catch (ServiceException $e) { $nf = $e->status(); }
     check('unknown scan id returns 404', $nf === 404);

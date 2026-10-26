@@ -29,9 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Change password · <?= e($config['name']) ?></title>
 <link rel="icon" type="image/svg+xml" href="<?= e(asset('images/v7-shield-logo.svg')) ?>">
-<script>try{var t=localStorage.getItem('v7-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script src="<?= e(asset('js/theme-init.js')) ?>"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>">
 </head>
 <body>

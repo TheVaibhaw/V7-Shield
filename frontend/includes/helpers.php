@@ -1,7 +1,4 @@
 <?php
-/**
- * View helpers. Every function that outputs dynamic text escapes it.
- */
 declare(strict_types=1);
 
 defined('APP_ROOT') || exit;
@@ -11,13 +8,11 @@ use V7Shield\Repository\ScanRepository;
 use V7Shield\Security\Csrf;
 use V7Shield\Service\ScanService;
 
-/** Escape a value for HTML output. */
 function e(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-/** Base URL of the frontend, detected from the running script (works under / or a sub-folder). */
 function base_url(): string
 {
     static $base = null;
@@ -41,7 +36,6 @@ function asset(string $path): string
     return url('assets/' . $path) . '?v=' . $v;
 }
 
-/** Look up a page by key in the nav/hidden allowlist. */
 function nav_item(string $key): ?array
 {
     global $config;
@@ -65,7 +59,6 @@ function page_url(string $key, array $query = []): string
     return $query ? $u . '?' . http_build_query($query) : $u;
 }
 
-/** Render the page shell top: <head>, sidebar, topbar. */
 function render_header(string $pageKey, ?string $title = null): void
 {
     global $config, $auth;
@@ -91,7 +84,6 @@ function icon(string $name, string $class = ''): string
     return '<i class="bi bi-' . e($name) . ($class ? ' ' . e($class) : '') . '" aria-hidden="true"></i>';
 }
 
-/** Page heading block with optional description and right-side actions (trusted HTML). */
 function page_header(string $title, string $desc = '', string $actionsHtml = ''): void
 {
     echo '<div class="page-head"><div><h1>' . e($title) . '</h1>';
@@ -105,7 +97,6 @@ function page_header(string $title, string $desc = '', string $actionsHtml = '')
     echo '</div>';
 }
 
-/** Notice box. $type: info | warning | danger | success */
 function notice(string $type, string $html, string $icon = 'info-circle'): string
 {
     return '<div class="notice notice-' . e($type) . '" role="' . ($type === 'danger' ? 'alert' : 'note') . '">' . icon($icon) . '<span>' . $html . '</span></div>';
@@ -146,7 +137,6 @@ function progress_bar(int $pct, string $cls = ''): string
     return '<div class="progress ' . e($cls) . '" role="progressbar" aria-valuenow="' . $pct . '" aria-valuemin="0" aria-valuemax="100" aria-label="Progress"><span style="width:' . $pct . '%"></span></div>';
 }
 
-/** Metric/stat card. */
 function stat_card(string $icon, string $label, string $value, string $tone = 'cyan', string $tip = ''): string
 {
     $h = '<div class="stat-card tone-' . e($tone) . '">';
@@ -173,9 +163,7 @@ function empty_state(string $icon, string $text, string $actionHtml = ''): strin
     return '<div class="empty-state">' . icon($icon) . '<p>' . e($text) . '</p>' . $actionHtml . '</div>';
 }
 
-/* ---------- Backend access ---------- */
 
-/** Lazily build the scan service. Throws ServiceException (safe message) if the DB is unavailable. */
 function scan_service(): ScanService
 {
     global $v7;
@@ -183,7 +171,6 @@ function scan_service(): ScanService
     return $svc ??= new ScanService($v7, new ScanRepository(Database::connect($v7)));
 }
 
-/** Run a backend call for a page; returns [result, errorMessage]. */
 function try_backend(callable $fn): array
 {
     try {
@@ -226,9 +213,7 @@ function str_param(array $src, string $key): ?string
     return is_string($v) && $v !== '' ? $v : null;
 }
 
-/* ---------- Formatting ---------- */
 
-/** Render a UTC DB timestamp; the browser converts it to local time (data-utc). */
 function fmt_dt(?string $utc): string
 {
     if ($utc === null || $utc === '') {
@@ -242,7 +227,12 @@ function fmt_duration(?string $start, ?string $end): string
     if (!$start) {
         return '—';
     }
-    $s = max(0, ($end ? strtotime($end . ' UTC') : time()) - strtotime($start . ' UTC'));
+    $from = strtotime($start . ' UTC');
+    $to = $end ? strtotime($end . ' UTC') : time();
+    if ($from === false || $to === false) {
+        return '—';
+    }
+    $s = max(0, $to - $from);
     return $s >= 60 ? intdiv($s, 60) . 'm ' . str_pad((string) ($s % 60), 2, '0', STR_PAD_LEFT) . 's' : $s . 's';
 }
 
@@ -251,7 +241,6 @@ function fmt_bytes(int $b): string
     return V7Shield\Scanner\Scanner::bytes($b);
 }
 
-/** Server-side pager preserving the current query string. */
 function pager(int $page, int $pages, int $total, array $query): string
 {
     $h = '<nav class="pager" aria-label="Pagination"><span>' . e(number_format($total)) . ' result' . ($total === 1 ? '' : 's') . '</span>';
@@ -282,7 +271,6 @@ function scan_status_label(array $job): string
     return $label;
 }
 
-/** Inline severity breakdown for a job. */
 function severity_chips(array $job): string
 {
     $h = '<span class="sev-chips">';
@@ -294,7 +282,6 @@ function severity_chips(array $job): string
     return $h . ($job['findings_count'] === 0 ? '<span class="muted">0</span>' : '') . '</span>';
 }
 
-/** Button that opens the detail drawer with label => value pairs (rendered as text by app.js). */
 function detail_button(string $title, array $fields, string $label = 'Details'): string
 {
     $json = json_encode(['title' => $title, 'fields' => $fields], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE);

@@ -85,16 +85,4 @@ echo notice('info', 'Scanner settings are read-only here. They are changed in <c
     <?php endforeach; ?>
     </tbody></table></div>
 <?php card_close(); ?>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const root = document.documentElement;
-  document.querySelectorAll('[data-theme-choice]').forEach((r) => {
-    r.checked = r.value === (root.dataset.theme || 'dark');
-    r.addEventListener('change', () => { if (root.dataset.theme !== r.value) document.querySelector('[data-theme-toggle]').click(); });
-  });
-  const c = document.querySelector('[data-compact-choice]');
-  c.checked = root.classList.contains('sb-collapsed');
-  c.addEventListener('change', () => document.querySelector('[data-sidebar-toggle]').click());
-});
-</script>
 <?php render_footer();

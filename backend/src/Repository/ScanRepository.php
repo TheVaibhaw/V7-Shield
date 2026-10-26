@@ -122,13 +122,18 @@ final class ScanRepository
         return (int) $st->fetchColumn();
     }
 
-    public function failStale(int $seconds): int
+    public function failStale(int $runningSeconds, int $queuedSeconds): int
     {
         $st = $this->pdo->prepare("UPDATE scan_jobs SET status = 'failed', finished_at = UTC_TIMESTAMP(),
             error_message = 'Scan stopped responding (process ended or timed out).'
             WHERE status = 'running' AND COALESCE(heartbeat_at, started_at) < UTC_TIMESTAMP() - INTERVAL ? SECOND");
-        $st->execute([$seconds]);
-        return $st->rowCount();
+        $st->execute([$runningSeconds]);
+        $n = $st->rowCount();
+        $st = $this->pdo->prepare("UPDATE scan_jobs SET status = 'failed', finished_at = UTC_TIMESTAMP(),
+            error_message = 'Scan was never started (no worker picked it up in time).'
+            WHERE status = 'queued' AND created_at < UTC_TIMESTAMP() - INTERVAL ? SECOND");
+        $st->execute([$queuedSeconds]);
+        return $n + $st->rowCount();
     }
 
     public function history(int $limit, int $offset, ?string $status = null): array

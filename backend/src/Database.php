@@ -5,7 +5,6 @@ namespace V7Shield;
 
 use PDO;
 
-/** PDO factory. Connection errors never expose the DSN or credentials. */
 final class Database
 {
     public static function connect(Config $config): PDO
@@ -13,6 +12,9 @@ final class Database
         static $pdo = null;
         if ($pdo instanceof PDO) {
             return $pdo;
+        }
+        if (!extension_loaded('pdo_mysql')) {
+            throw new ServiceException('The PHP extension pdo_mysql is not installed (e.g. apt install php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-mysql).', 503);
         }
         $db = $config->get('database');
         try {

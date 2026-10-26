@@ -4,10 +4,11 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') {
     exit(1);
 }
+umask(0077);
 
 const ROOT = __DIR__;
 const SCHEMA_FILE = ROOT . '/backend/database/schema.sql';
-const TABLES = ['scan_jobs', 'scan_findings', 'scan_skips', 'users'];
+const TABLES = ['scan_jobs', 'scan_findings', 'scan_skips', 'users', 'login_attempts'];
 define('CONFIG_FILE', getenv('V7SHIELD_CONFIG') ?: ROOT . '/backend/config/config.local.php');
 
 $opts = getopt('', ['port:', 'host:', 'setup-only', 'help']);
@@ -111,13 +112,15 @@ function apply_schema(PDO $pdo): void
 }
 
 step('Checking requirements');
-if (PHP_VERSION_ID < 80200) {
-    fail('PHP 8.2 or newer is required (found ' . PHP_VERSION . ').');
+if (PHP_VERSION_ID < 80100) {
+    fail('PHP 8.1 or newer is required (found ' . PHP_VERSION . ').');
 }
 ok('PHP ' . PHP_VERSION);
-foreach (['pdo_mysql', 'mbstring'] as $ext) {
-    extension_loaded($ext) ? ok("extension $ext") : fail("PHP extension '$ext' is missing (e.g. sudo apt install php-mysql php-mbstring).");
+if (!extension_loaded('pdo_mysql')) {
+    fail("PHP extension 'pdo_mysql' is missing (e.g. sudo apt install php" . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . "-mysql).");
 }
+ok('extension pdo_mysql');
+extension_loaded('mbstring') ? ok('extension mbstring') : warn('mbstring not installed — using built-in UTF-8 fallback (optional).');
 foreach ([SCHEMA_FILE, ROOT . '/frontend/index.php', ROOT . '/backend/bootstrap.php'] as $f) {
     is_file($f) || fail('Missing file: ' . substr($f, strlen(ROOT) + 1));
 }
@@ -181,6 +184,7 @@ if (!is_file(CONFIG_FILE)) {
         @chmod(CONFIG_FILE . '.bak', 0600);
         $raw = str_replace(["'CHANGE_ME_DB_USER'", "'CHANGE_ME_DB_PASSWORD'"], [var_export($dbUser, true), var_export($dbPass, true)], $raw);
         file_put_contents(CONFIG_FILE, $raw, LOCK_EX);
+        @chmod(CONFIG_FILE, 0600);
         ok('Filled in credentials (previous file saved as config.local.php.bak)');
     }
 }
@@ -269,6 +273,11 @@ if (isset($opts['setup-only'])) {
     exit(0);
 }
 
+if (!V7Shield\Security\Auth::isLoopback($host === 'localhost' ? '127.0.0.1' : $host)) {
+    warn("Listening on $host makes the dashboard reachable from your network. Use HTTPS and strong passwords;");
+    warn('accounts that still have the default password can only sign in from this computer.');
+}
+
 $probe = @fsockopen($host === 'localhost' ? '127.0.0.1' : $host, $port, $errno, $errstr, 0.5);
 if ($probe) {
     fclose($probe);
@@ -277,7 +286,9 @@ if ($probe) {
 
 $url = "http://$host:$port/";
 say("\n\033[32mV7-Shield is running at $url\033[0m  (Ctrl+C to stop)\n");
-$cmd = escapeshellarg(PHP_BINARY) . ' -S ' . escapeshellarg("$host:$port") . ' -t ' . escapeshellarg(ROOT . '/frontend');
+// The router serves only dashboard entry points and assets (php -S ignores .htaccess).
+$cmd = escapeshellarg(PHP_BINARY) . ' -S ' . escapeshellarg("$host:$port") . ' -t ' . escapeshellarg(ROOT . '/frontend')
+    . ' ' . escapeshellarg(ROOT . '/backend/dev-router.php');
 if (DIRECTORY_SEPARATOR === '/') {
     putenv('PHP_CLI_SERVER_WORKERS=4');
 }

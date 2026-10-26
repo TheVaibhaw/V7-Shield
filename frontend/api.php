@@ -36,7 +36,7 @@ try {
         case 'start':
             $target = str_param($_POST, 'target') ?? '';
             $id = $svc->start($target, $user, $_SERVER['REMOTE_ADDR'] ?? null);
-            json_response(['id' => $id, 'execution' => $v7->get('jobs.execution')], 201);
+            json_response(['id' => $id], 201);
         case 'run':
             if ($v7->get('jobs.execution') !== 'inline') {
                 json_response(['error' => 'Scans are processed by the CLI worker.'], 409);

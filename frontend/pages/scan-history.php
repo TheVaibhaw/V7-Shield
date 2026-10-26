@@ -21,7 +21,7 @@ card_open('Scans', 'clock-history');
 ?>
 <form method="get" class="filter-bar">
   <div class="field"><label for="h-status">Status</label>
-    <select id="h-status" name="status" onchange="this.form.submit()"><option value="">All</option>
+    <select id="h-status" name="status" data-autosubmit><option value="">All</option>
       <?php foreach (ScanService::STATUSES as $s): ?><option value="<?= e($s) ?>"<?= $status === $s ? ' selected' : '' ?>><?= e(ucfirst($s)) ?></option><?php endforeach; ?>
     </select></div>
   <noscript><button class="btn btn-ghost" type="submit">Filter</button></noscript>

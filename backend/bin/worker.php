@@ -21,7 +21,7 @@ $service = new ScanService($config, $repo);
 $loop = in_array('--loop', $argv, true);
 
 do {
-    $repo->failStale((int) $config->get('jobs.stale_after', 900));
+    $service->failStale();
     while (($id = $repo->nextQueuedId()) !== null) {
         $ran = $service->run($id);
         $job = $repo->find($id);

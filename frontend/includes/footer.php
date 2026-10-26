@@ -29,7 +29,7 @@
 
 <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script src="<?= e(asset('vendor/chartjs/chart.umd.min.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 <script src="<?= e(asset('js/charts.js')) ?>" defer></script>
 <script src="<?= e(asset('js/scans.js')) ?>" defer></script>
