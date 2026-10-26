@@ -32,14 +32,12 @@ An open-source, **read-only** malware scanner for PHP websites (WordPress, Jooml
 
 ## Features
 
-| | |
-|---|---|
-| 🔍 **Heuristic scanning** | 15 regex rules + 4 built-in checks: webshell markers, request data reaching `eval` / shell / `include`, decode-and-execute chains, obfuscation, PHP hidden in images, extension/content mismatches, executables |
-| 🛡️ **Safe file walking** | Never follows symlinks; checks inodes and real paths; enforces size, depth, file-count and time limits; reports every skipped file with a reason |
-| 📊 **Dashboard** | Severity breakdown, findings with truncated evidence and SHA-256, scan history, live scan status |
-| 🔐 **Hardened console** | Session auth, server-side brute-force throttling, forced change of the default password, strict CSP, self-hosted assets |
-| ⚙️ **Two execution modes** | Inline (bounded, in the browser request) or a CLI worker for cron |
-| 🧪 **Tested** | Unit and database tests on PHP 8.1 – 8.4 (plus a run without mbstring) and end-to-end HTTP tests in CI |
+- **Heuristic scanning.** 15 regex rules plus 4 built-in checks: webshell markers, request data reaching `eval` / shell / `include`, decode-and-execute chains, obfuscation, PHP hidden in images, extension/content mismatches and stray executables.
+- **Safe file walking.** It never follows symlinks, checks inodes and real paths, and enforces size, depth, file-count and time limits. Every skipped file is reported with a reason.
+- **Dashboard.** Severity breakdown, findings with truncated evidence and SHA-256, scan history and live scan status.
+- **Hardened console.** Session auth, server-side brute-force throttling, a forced change of the default password, a strict CSP and self-hosted assets.
+- **Two execution modes.** Inline (bounded, inside the browser request) or a CLI worker you run from cron.
+- **Tested.** Unit and database tests on PHP 8.1 – 8.4 (plus a run without mbstring) and end-to-end HTTP tests in CI.
 
 ## Screenshots
 
@@ -160,7 +158,7 @@ Contributions are very welcome on any of these. Look for issues labelled [`good 
 
 New to open source? This is a friendly place to start. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and the PR checklist. The quickest wins are a **new detection rule** or a **false-positive fix**.
 
-If V7-Shield helps you, please **⭐ star the repo**. It helps other people find it.
+If V7-Shield is useful to you, a star helps other people find it.
 
 ## Security
 

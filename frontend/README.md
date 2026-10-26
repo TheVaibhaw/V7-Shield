@@ -1,4 +1,4 @@
-# V7-Shield — Admin dashboard (frontend)
+# V7-Shield - Admin dashboard (frontend)
 
 Core PHP dashboard for the V7-Shield scanner. It renders real, persisted scan data from the backend library (`../backend`, included server-side). There's no framework and no build step.
 
