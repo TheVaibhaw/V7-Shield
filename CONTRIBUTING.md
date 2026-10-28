@@ -47,6 +47,7 @@ Rules live in `backend/config/rules.php`. Each one needs:
     'severity' => 'high',           // critical | high | medium | low
     'confidence' => 70,             // 0-100: how often a match is truly malicious
     'pattern' => '~...~i',          // PCRE, "~" delimiter, bounded quantifiers ({0,120}, not .*)
+    'extensions' => ['js'],         // optional: run only on these file types (default: PHP files and files with a PHP tag)
     'description' => 'Why this matters.',
     'false_positives' => 'Known legitimate code that also matches.',
 ],

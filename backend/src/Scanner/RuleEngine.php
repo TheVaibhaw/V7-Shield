@@ -21,6 +21,9 @@ final class RuleEngine
             if (@preg_match($rule['pattern'], '') === false) {
                 throw new ScanException('Invalid rule pattern: ' . $rule['id']);
             }
+            if (array_key_exists('extensions', $rule)) {
+                $rule['extensions'] = self::normaliseExtensions($rule['extensions'], (string) $rule['id']);
+            }
             $this->rules[] = $rule;
         }
     }
@@ -31,14 +34,25 @@ final class RuleEngine
     }
 
     /**
+     * Runs the rules that apply to a file.
+     *
+     * A rule without an `extensions` list applies only in PHP context (a PHP-family
+     * file or a file containing a PHP tag). A rule with an `extensions` list applies
+     * only to files with one of those extensions, e.g. `'extensions' => ['js']`.
+     *
      * @param list<string> $failed receives IDs of rules that could not be evaluated
+     * @param string|null $extension lower-case file extension without the dot
+     * @param bool $phpContext whether the file is PHP or contains a PHP tag
      * @return list<array{rule:array,line:int,evidence:string,match_count:int}>
      */
-    public function match(string $content, array &$failed = []): array
+    public function match(string $content, array &$failed = [], ?string $extension = null, bool $phpContext = true): array
     {
         $out = [];
         $failed = [];
         foreach ($this->rules as $rule) {
+            if (!self::applies($rule, $extension, $phpContext)) {
+                continue;
+            }
             $n = @preg_match_all($rule['pattern'], $content, $m, PREG_OFFSET_CAPTURE);
             if ($n === false) {
                 // Backtrack/JIT limit on pathological input: report it instead of silently passing.
@@ -56,6 +70,30 @@ final class RuleEngine
             }
         }
         return $out;
+    }
+
+    private static function applies(array $rule, ?string $extension, bool $phpContext): bool
+    {
+        if (!isset($rule['extensions'])) {
+            return $phpContext;
+        }
+        return $extension !== null && in_array(strtolower($extension), $rule['extensions'], true);
+    }
+
+    /** @return list<string> */
+    private static function normaliseExtensions(mixed $extensions, string $id): array
+    {
+        if (!is_array($extensions) || $extensions === []) {
+            throw new ScanException('Invalid rule extensions: ' . $id);
+        }
+        $out = [];
+        foreach ($extensions as $ext) {
+            if (!is_string($ext) || !preg_match('~^\.?[a-z0-9]{1,10}$~i', $ext)) {
+                throw new ScanException('Invalid rule extensions: ' . $id);
+            }
+            $out[] = strtolower(ltrim($ext, '.'));
+        }
+        return array_values(array_unique($out));
     }
 
     public static function lineAt(string $content, int $offset): int

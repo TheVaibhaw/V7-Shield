@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- Rules can declare `'extensions' => [...]` to run on non-PHP files; rules without it keep running only in PHP context.
+- `V7-OBF-006`: detects `eval(atob(...))` and `new Function(atob(...))` card-skimmer patterns in `.js` files.
+
 ## [0.2.0] - 2026-10-26
 
 First public MVP.
