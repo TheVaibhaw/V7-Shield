@@ -139,6 +139,7 @@ foreach ($expect as $file => $rule) {
 }
 check('extension-scoped rule does not run on PHP files', !in_array('V7-OBF-006', $sink->rules('jsdoc.php'), true));
 check('rule extensions are normalised (".JS" matches js files)', (function () use ($ev) {
+    $failed = [];
     $engine = new V7Shield\Scanner\RuleEngine(['rules' => [['id' => 'T-EXT', 'name' => 't', 'category' => 'obfuscation', 'severity' => 'low', 'confidence' => 1, 'extensions' => ['.JS'], 'pattern' => '~' . $ev . '~']]]);
     return count($engine->match($ev . '(1)', $failed, 'js', false)) === 1 && $engine->match($ev . '(1)', $failed, 'php', true) === [];
 })());
