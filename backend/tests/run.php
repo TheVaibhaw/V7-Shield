@@ -56,6 +56,7 @@ mkdir("$root/uploads/2026", 0755, true);
 mkdir("$root/deep/a/b/c/d", 0755, true);
 mkdir("$root/node_modules/pkg", 0755, true);
 mkdir("$root/empty-dir", 0755, true);
+mkdir("$root/assets/js", 0755, true);
 mkdir($outside, 0755, true);
 register_shutdown_function(fn() => rrmdir($tmp));
 
@@ -69,6 +70,8 @@ $files = [
     'photo.jpg' => "\xFF\xD8\xFF\xE0" . str_repeat("\x10", 64),
     'style.css' => "body { color: #333; }\n",
     'config.xml' => "<?xml version=\"1.0\"?><config/>\n",
+    'assets/js/app.js' => 'var s = at' . 'ob("aGVsbG8="); console.log(s);',
+    'notes.txt' => 'Skimmers look like ' . $ev . '(at' . 'ob("...")) in checkout scripts.',
     // Suspicious fixtures
     'uploads/2026/cache.php' => $o . "\n\n" . $ev . '(base' . '64_decode("ZWNobyAxOw=="));',
     'uploads/2026/avatar.jpg' => "\xFF\xD8\xFF\xE0" . $o . 'sys' . 'tem($_GET["c"]);',
@@ -85,6 +88,9 @@ $files = [
     'marker.php' => $o . '// Files' . 'Man panel',
     'tpl.phtml' => "<h1><?= \$title ?></h1>\n",
     'tool.jpg' => "\x7FELF" . str_repeat("\0", 60),
+    'assets/js/checkout.js' => 'window.addEventListener("load", function () { ' . $ev . '(at' . 'ob("Y29uc29sZS5sb2coMSk=")); });',
+    'assets/js/loader.js' => 'var f = new Func' . 'tion(window.at' . 'ob(p)); f();',
+    'jsdoc.php' => $o . 'echo "Skimmers use ' . $ev . '(at' . 'ob(...)) in .js files";',
     '.hidden.php' => $o . $ev . '($_REQUEST["x"]);',
     'node_modules/pkg/evil.php' => $o . $ev . '($_GET["x"]);',
     'debug.log' => $o . $ev . '($_GET["x"]);',
@@ -118,7 +124,7 @@ $sink = new MemorySink();
 $walker = new FileWalker($root, ['node_modules/', '*.log'], $limits['max_depth']);
 $stats = $scanner->scan($walker, $sink);
 
-foreach (['index.php', 'about.html', 'logo.png', 'photo.jpg', 'style.css', 'config.xml'] as $clean) {
+foreach (['index.php', 'about.html', 'logo.png', 'photo.jpg', 'style.css', 'config.xml', 'assets/js/app.js', 'notes.txt'] as $clean) {
     check("clean file has no findings: $clean", $sink->rules($clean) === [], implode(',', $sink->rules($clean)));
 }
 $expect = [
@@ -126,10 +132,26 @@ $expect = [
     'shell.php' => 'V7-EXEC-003', 'inc.php' => 'V7-RCE-001', 'remote.php' => 'V7-RCE-002', 'dropper.php' => 'V7-WS-002',
     'packed.php' => 'V7-OBF-003', 'hex.php' => 'V7-OBF-004', 'chr.php' => 'V7-OBF-005', 'legacy.php' => 'V7-EXEC-005',
     'pregx.php' => 'V7-EXEC-004', 'marker.php' => 'V7-WS-001', 'tpl.phtml' => 'V7-FS-001', 'tool.jpg' => 'V7-SIG-003',
-    '.hidden.php' => 'V7-EXEC-001',
+    '.hidden.php' => 'V7-EXEC-001', 'assets/js/checkout.js' => 'V7-OBF-006', 'assets/js/loader.js' => 'V7-OBF-006',
 ];
 foreach ($expect as $file => $rule) {
     check("detects $rule in $file", in_array($rule, $sink->rules($file), true), 'got: ' . implode(',', $sink->rules($file)));
+}
+check('extension-scoped rule does not run on PHP files', !in_array('V7-OBF-006', $sink->rules('jsdoc.php'), true));
+check('rule extensions are normalised (".JS" matches js files)', (function () use ($ev) {
+    $failed = [];
+    $engine = new V7Shield\Scanner\RuleEngine(['rules' => [['id' => 'T-EXT', 'name' => 't', 'category' => 'obfuscation', 'severity' => 'low', 'confidence' => 1, 'extensions' => ['.JS'], 'pattern' => '~' . $ev . '~']]]);
+    return count($engine->match($ev . '(1)', $failed, 'js', false)) === 1 && $engine->match($ev . '(1)', $failed, 'php', true) === [];
+})());
+foreach ([[], 'js', [''], ['j s'], [1]] as $bad) {
+    check('rule with invalid extensions is rejected: ' . json_encode($bad), (function () use ($bad) {
+        try {
+            new V7Shield\Scanner\RuleEngine(['rules' => [['id' => 'T-BAD', 'name' => 't', 'category' => 'obfuscation', 'severity' => 'low', 'confidence' => 1, 'extensions' => $bad, 'pattern' => '~x~']]]);
+            return false;
+        } catch (V7Shield\Scanner\ScanException) {
+            return true;
+        }
+    })());
 }
 check('image with PHP also matches command-execution rule', in_array('V7-EXEC-002', $sink->rules('uploads/2026/avatar.jpg'), true));
 check('every finding is classified "suspicious"', array_unique(array_column($sink->findings, 'classification')) === ['suspicious']);

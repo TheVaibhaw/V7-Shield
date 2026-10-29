@@ -149,16 +149,15 @@ final class Scanner
             $raw[] = $this->builtinFinding('V7-SIG-001', RuleEngine::lineAt($content, $phpOffset), RuleEngine::evidence($content, $phpOffset, 5));
         }
 
-        if ($isPhpFile || $phpOffset !== null) {
-            foreach ($this->rules->match($content, $failedRules) as $m) {
-                $r = $m['rule'];
-                $raw[] = [
-                    'rule_id' => $r['id'], 'rule_name' => $r['name'], 'category' => $r['category'],
-                    'severity' => $r['severity'], 'confidence' => (int) $r['confidence'],
-                    'description' => $r['description'] ?? '', 'false_positives' => $r['false_positives'] ?? '',
-                    'line' => $m['line'], 'evidence' => $m['evidence'], 'match_count' => $m['match_count'],
-                ];
-            }
+        // Rules without an `extensions` list run only in PHP context; rules with one run on matching files.
+        foreach ($this->rules->match($content, $failedRules, $ext, $isPhpFile || $phpOffset !== null) as $m) {
+            $r = $m['rule'];
+            $raw[] = [
+                'rule_id' => $r['id'], 'rule_name' => $r['name'], 'category' => $r['category'],
+                'severity' => $r['severity'], 'confidence' => (int) $r['confidence'],
+                'description' => $r['description'] ?? '', 'false_positives' => $r['false_positives'] ?? '',
+                'line' => $m['line'], 'evidence' => $m['evidence'], 'match_count' => $m['match_count'],
+            ];
         }
 
         $partial = $failedRules ? 'Rules not evaluated (regex limit): ' . implode(', ', $failedRules) : null;

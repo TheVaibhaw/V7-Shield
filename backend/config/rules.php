@@ -4,7 +4,7 @@ declare(strict_types=1);
 $req = '\$_(?:GET|POST|REQUEST|COOKIE|SERVER|FILES)\b';
 
 return [
-    'version' => '2026.10.1',
+    'version' => '2026.10.2',
     'rules' => [
         [
             'id' => 'V7-OBF-001', 'name' => 'Evaluation of decoded data', 'category' => 'obfuscation',
@@ -110,6 +110,14 @@ return [
             'pattern' => '~\b(?:include|require)(?:_once)?\s*\(?\s*[\'"](?:https?|ftp|php|data)://~i',
             'description' => 'Code is included from a remote or stream URL.',
             'false_positives' => 'Very rare; php://stdin in CLI scripts.',
+        ],
+        [
+            'id' => 'V7-OBF-006', 'name' => 'JavaScript eval of base64-decoded data', 'category' => 'obfuscation',
+            'severity' => 'high', 'confidence' => 80,
+            'extensions' => ['js'],
+            'pattern' => '~\b(?:eval|new\s{1,20}Function)\s{0,20}\(\s{0,20}(?:(?:window|self)\s{0,20}\.\s{0,20})?atob\s{0,20}\(~',
+            'description' => 'Base64-decoded data is passed straight to eval() or new Function(), the usual shape of card skimmers injected into checkout JavaScript.',
+            'false_positives' => 'Rare in hand-written code. Some minified bundles, ad or analytics loaders, and packed demo scripts decode base64 at runtime before evaluating it.',
         ],
     ],
 

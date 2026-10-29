@@ -72,7 +72,7 @@ Use worker mode on shared hosting with short request time limits, or for large s
    - `V7-SIG-002`: extension and magic bytes don't match.
    - `V7-SIG-003`: ELF, PE or Mach-O executable.
    - `V7-FS-001`: alternative PHP extensions (`.phtml`, `.phar`, …).
-4. **Rules.** The regex rules in `config/rules.php` run on PHP-family files and on any file containing a PHP tag.
+4. **Rules.** The regex rules in `config/rules.php` run on PHP-family files and on any file containing a PHP tag. A rule can instead declare `'extensions' => ['js']` to run only on files with those extensions.
    - Each rule has an id, category, severity, confidence and a list of known false positives.
    - If a rule hits PCRE's backtrack limit, the file is reported with reason `rule_error` instead of silently passing.
 5. **Record.** For each finding the backend stores:
@@ -83,16 +83,17 @@ Use worker mode on shared hosting with short request time limits, or for large s
 
 ### Rule set and known limitations
 
-The 15 regex rules and 4 built-in checks cover:
+The 16 regex rules and 4 built-in checks cover:
 - request input reaching `eval`, shell functions, `include` or file writes
 - decode-and-evaluate chains and long encoded or escaped strings
 - `chr()` assembly and `preg_replace /e`
 - known webshell marker strings
+- `eval(atob(...))` / `new Function(atob(...))` in `.js` files, a common card-skimmer shape
 - file-signature anomalies
 
 The engine **will miss**:
 - malware that doesn't match these patterns, or that is split or encrypted (including heavily obfuscated variants and ionCube/Zend-encoded files)
-- malicious JavaScript, and malicious content stored in databases
+- most malicious JavaScript (only the base64 `eval`/`new Function` skimmer shape is checked), and malicious content stored in databases
 - server-level compromises (cron jobs, `.htaccess` rewrites, binaries outside the target)
 - anything excluded or over the limits
 
